@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{2ea4157f-0c38-4c51-b41e-aee1cbf1ad98}</ProjectGuid>
+    <RootNamespace>ChatApplication</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <LibraryPath>$(ProjectDir)Libs;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>$(ProjectDir)Includes;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <LibraryPath>$(ProjectDir)Libs;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <IncludePath>$(ProjectDir)Includes;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <LibraryPath>$(ProjectDir)Libs;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <IncludePath>$(ProjectDir)Includes;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <LibraryPath>$(ProjectDir)Libs;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <IncludePath>$(ProjectDir)Includes;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)Headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Includes\glad\glad.c" />
+    <ClCompile Include="Includes\ImGUI\imgui.cpp" />
+    <ClCompile Include="Includes\ImGUI\imgui_demo.cpp" />
+    <ClCompile Include="Includes\ImGUI\imgui_draw.cpp" />
+    <ClCompile Include="Includes\ImGUI\imgui_impl_glfw.cpp" />
+    <ClCompile Include="Includes\ImGUI\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="Includes\ImGUI\imgui_stdlib.cpp" />
+    <ClCompile Include="Includes\ImGUI\imgui_tables.cpp" />
+    <ClCompile Include="Includes\ImGUI\imgui_widgets.cpp" />
+    <ClCompile Include="Sources\Chat\ChatManager.cpp" />
+    <ClCompile Include="Sources\Chat\ChatMessage.cpp" />
+    <ClCompile Include="Sources\Chat\ChatNetworkThread.cpp" />
+    <ClCompile Include="Sources\Chat\User.cpp" />
+    <ClCompile Include="Sources\Chat\UserManager.cpp" />
+    <ClCompile Include="Sources\Core\App.cpp" />
+    <ClCompile Include="Sources\Core\Log.cpp" />
+    <ClCompile Include="Sources\Core\Signal.cpp" />
+    <ClCompile Include="Sources\main.cpp" />
+    <ClCompile Include="Sources\Maths\Maths.cpp" />
+    <ClCompile Include="Sources\Networking\Address.cpp" />
+    <ClCompile Include="Sources\Networking\Errors.cpp" />
+    <ClCompile Include="Sources\Networking\Network.cpp" />
+    <ClCompile Include="Sources\Networking\Serialization\Conversion.cpp" />
+    <ClCompile Include="Sources\Networking\Serialization\Deserializer.cpp" />
+    <ClCompile Include="Sources\Networking\Serialization\Serializer.cpp" />
+    <ClCompile Include="Sources\Networking\Sockets.cpp" />
+    <ClCompile Include="Sources\Networking\TCP\TCPSocket.cpp" />
+    <ClCompile Include="Sources\Networking\UDP\AckHandler.cpp" />
+    <ClCompile Include="Sources\Networking\UDP\ChannelsHandler.cpp" />
+    <ClCompile Include="Sources\Networking\UDP\Client.cpp" />
+    <ClCompile Include="Sources\Networking\UDP\DistantClient.cpp" />
+    <ClCompile Include="Sources\Networking\UDP\Protocols\ReliableOrdered.cpp" />
+    <ClCompile Include="Sources\Networking\UDP\Protocols\UnreliableOrdered.cpp" />
+    <ClCompile Include="Sources\Networking\UDP\Simulator.cpp" />
+    <ClCompile Include="Sources\Networking\Utils.cpp" />
+    <ClCompile Include="Sources\Resources\Texture.cpp" />
+    <ClCompile Include="Sources\Resources\TextureManager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Headers\Chat\ChatManager.hpp" />
+    <ClInclude Include="Headers\Chat\ChatMessage.hpp" />
+    <ClInclude Include="Headers\Chat\ChatNetworkThread.hpp" />
+    <ClInclude Include="Headers\Chat\User.hpp" />
+    <ClInclude Include="Headers\Chat\UserManager.hpp" />
+    <ClInclude Include="Headers\Core\App.hpp" />
+    <ClInclude Include="Headers\Core\Log.hpp" />
+    <ClInclude Include="Headers\Core\Signal.hpp" />
+    <ClInclude Include="Headers\Core\Types.hpp" />
+    <ClInclude Include="Headers\Maths\Maths.hpp" />
+    <ClInclude Include="Headers\Networking\Address.hpp" />
+    <ClInclude Include="Headers\Networking\Errors.hpp" />
+    <ClInclude Include="Headers\Networking\Messages.hpp" />
+    <ClInclude Include="Headers\Networking\Network.hpp" />
+    <ClInclude Include="Headers\Networking\NetworkSettings.hpp" />
+    <ClInclude Include="Headers\Networking\NetworkTest.hpp" />
+    <ClInclude Include="Headers\Networking\NetworkTestTWO.hpp" />
+    <ClInclude Include="Headers\Networking\Serialization\Conversion.hpp" />
+    <ClInclude Include="Headers\Networking\Serialization\Deserializer.hpp" />
+    <ClInclude Include="Headers\Networking\Serialization\Serializer.hpp" />
+    <ClInclude Include="Headers\Networking\Sockets.hpp" />
+    <ClInclude Include="Headers\Networking\TCP\TCPSocket.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\AckHandler.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\ChannelsHandler.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\Client.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\Datagram.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\DistantClient.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\Protocols\Packet.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\Protocols\ProtocolInterface.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\Protocols\ReliableOrdered.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\Protocols\UnreliableOrdered.hpp" />
+    <ClInclude Include="Headers\Networking\UDP\Simulator.hpp" />
+    <ClInclude Include="Headers\Networking\Utils.hpp" />
+    <ClInclude Include="Headers\Resources\SaveFile.hpp" />
+    <ClInclude Include="Headers\Resources\Texture.hpp" />
+    <ClInclude Include="Headers\Resources\TextureManager.hpp" />
+    <ClInclude Include="Includes\glad\glad.h" />
+    <ClInclude Include="Includes\GLFW\glfw3.h" />
+    <ClInclude Include="Includes\GLFW\glfw3native.h" />
+    <ClInclude Include="Includes\ImGUI-FileBrowser\imfilebrowser.h" />
+    <ClInclude Include="Includes\ImGUI\imconfig.h" />
+    <ClInclude Include="Includes\ImGUI\imgui.h" />
+    <ClInclude Include="Includes\ImGUI\imgui_impl_glfw.h" />
+    <ClInclude Include="Includes\ImGUI\imgui_impl_opengl3.h" />
+    <ClInclude Include="Includes\ImGUI\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="Includes\ImGUI\imgui_internal.h" />
+    <ClInclude Include="Includes\ImGUI\imgui_stdlib.hpp" />
+    <ClInclude Include="Includes\ImGUI\imstb_rectpack.h" />
+    <ClInclude Include="Includes\ImGUI\imstb_textedit.h" />
+    <ClInclude Include="Includes\ImGUI\imstb_truetype.h" />
+    <ClInclude Include="Includes\KHR\khrplatform.h" />
+    <ClInclude Include="Includes\STB_Image\stb_image.h" />
+    <ClInclude Include="Includes\STB_Image\stb_image_write.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Headers\Maths\Maths.inl" />
+    <None Include="Headers\Networking\Utils.inl" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

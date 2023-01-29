@@ -1,0 +1,81 @@
+#pragma once
+
+#include <thread>
+#include <vector>
+
+#include "Networking/Address.hpp"
+#include "Networking/UDP/Client.hpp"
+#include "Core/Types.hpp"
+#include "Core/Signal.hpp"
+#include "ChatMessage.hpp"
+#include "UserManager.hpp"
+#include "Resources/TextureManager.hpp"
+
+namespace Chat
+{
+	class ChatManager;
+
+	enum class Action : u8
+	{
+		PING,
+		USER_CONNECT,
+		USER_DISCONNECT,
+		MESSAGE_TEXT,
+		MESSAGE_IMAGE,
+		USER_UPDATE,
+	};
+
+	class ActionData
+	{
+	public:
+		ActionData() = default;
+		ActionData(Action typeIn, void* dataIn, u64 szIn) : type(typeIn), data(dataIn), dataSize(szIn) { }
+
+		Chat::Action type = Action::PING;
+		u64 dataSize = 0;
+		void* data = nullptr;
+	};
+
+	class ChatNetworkThread
+	{
+	public:
+		ChatNetworkThread();
+
+		virtual ~ChatNetworkThread();
+
+		void Update(f32 dt);
+
+		void PushAction(Action type, void* data, u64 dataSize);
+	protected:
+		std::thread t;
+		Networking::Address address;
+		Networking::UDP::Client client;
+		std::vector<ActionData> actionQueue;
+		std::vector<ActionData> actions;
+		Core::Signal signal = Core::Signal(false);
+		Core::Signal shouldQuit = Core::Signal(false);
+	};
+
+	enum class ChatNetworkState : u8
+	{
+		DISCONNECTED,
+		CONNECTED,
+		WAITING_CONNECTION,
+	};
+
+	class ChatClientThread : public ChatNetworkThread
+	{
+	public:
+		ChatClientThread() = delete;
+		ChatClientThread(Networking::Address& address);
+
+		virtual ~ChatClientThread() override;
+
+		virtual void Update(f32 dt, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
+
+		void ThreadFunc();
+	private:
+		ChatNetworkState state = ChatNetworkState::DISCONNECTED;
+	};
+
+}
