@@ -4,10 +4,9 @@
 
 using namespace Chat;
 
-u64 ChatMessage::index = 0;
 float TextMessage::MaxWidth = 300.0f;
 
-Chat::TextMessage::TextMessage(std::string& textIn, User* userIn, u64 tm) : ChatMessage(userIn, tm)
+Chat::TextMessage::TextMessage(std::string& textIn, User* userIn, u64 tm, u64 id) : ChatMessage(userIn, tm, id)
 {
 	std::vector<std::string> text;
 	height = ImGui::GetTextLineHeight() + 10;
@@ -59,7 +58,7 @@ void TextMessage::Draw()
 	ImGui::SetCursorPosX(pos.x);
 }
 
-Chat::ImageMessage::ImageMessage(Resources::Texture* img, User* userIn, u64 tm) : ChatMessage(userIn, tm), tex(img)
+Chat::ImageMessage::ImageMessage(Resources::Texture* img, User* userIn, u64 tm, u64 id) : ChatMessage(userIn, tm, id), tex(img)
 {
 	height = 210 + ImGui::GetTextLineHeightWithSpacing();
 	width = tex->GetTextureWidth() * 200.0f / tex->GetTextureHeight();
@@ -87,13 +86,9 @@ void Chat::ImageMessage::Draw()
 	ImGui::SetCursorPosX(pos.x);
 }
 
-Chat::ChatMessage::ChatMessage(User* s, u64 timeIn) : sender(s), messageID(index++)
+Chat::ChatMessage::ChatMessage(User* s, u64 timeIn, u64 id) : sender(s), messageID(id)
 {
-	for (u8 i = 0; i < 16; i++)
-	{
-		u8 digit = (messageID >> (i * 4)) & 0xf;
-		messageSTR[i] = digit + (digit < 0xa ? '0' : 'A' - 0xa);
-	}
+	Maths::Util::GetHex(messageSTR, messageID);
 	time_t rawtime = timeIn;
 	tm timeinfo;
 	char buffer[80];
@@ -121,7 +116,7 @@ void Chat::ChatMessage::DrawUser(ImVec2& pos)
 	ImGui::SetCursorPosX(pos.x);
 }
 
-Chat::ConnectionMessage::ConnectionMessage(bool connected, User* userIn, u64 tm) : ChatMessage(userIn, tm), connect(connected)
+Chat::ConnectionMessage::ConnectionMessage(bool connected, User* userIn, u64 tm, u64 id) : ChatMessage(userIn, tm, id), connect(connected)
 {
 }
 

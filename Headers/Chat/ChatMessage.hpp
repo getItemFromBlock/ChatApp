@@ -13,7 +13,7 @@ namespace Chat
 	{
 	public:
 		ChatMessage() = default;
-		ChatMessage(User* s, u64 tm);
+		ChatMessage(User* s, u64 tm, u64 id = 0);
 
 		virtual ~ChatMessage() = default;
 
@@ -30,15 +30,13 @@ namespace Chat
 		char messageSTR[17] = "0000000000000000";
 		std::string timestamp = "01/01/1970";
 		f32 height = 0.0f;
-
-		static u64 index;
 	};
 
 	class TextMessage : public ChatMessage
 	{
 	public:
 		TextMessage() = default;
-		TextMessage(std::string& textIn, User* userIn, u64 tm);
+		TextMessage(std::string& textIn, User* userIn, u64 tm, u64 id = 0);
 
 		virtual ~TextMessage() override = default;
 		virtual void Draw() override;
@@ -52,7 +50,7 @@ namespace Chat
 	{
 	public:
 		ImageMessage() = default;
-		ImageMessage(Resources::Texture* img, User* userIn, u64 tm);
+		ImageMessage(Resources::Texture* img, User* userIn, u64 tm, u64 id = 0);
 
 		virtual ~ImageMessage() override = default;
 		virtual void Draw() override;
@@ -66,7 +64,7 @@ namespace Chat
 	{
 	public:
 		ConnectionMessage() = default;
-		ConnectionMessage(bool connected, User* userIn, u64 tm);
+		ConnectionMessage(bool connected, User* userIn, u64 tm, u64 id = 0);
 
 		virtual ~ConnectionMessage() override = default;
 		virtual void Draw() override;

@@ -48,6 +48,8 @@ namespace Resources
 		static const char* GetSTBIError();
 		static TextureError TryLoad(const char* path, Texture* ptr, Maths::Vec2 minSize = Maths::Vec2(0,0), Maths::Vec2 maxSize = Maths::Vec2(0,0), u64 maxFileSize = -1);
 
+		TextureError LoadFromMemory(u64 dataSize, unsigned char* dataIn, std::string& ext, Maths::IVec2 resolution);
+
 		virtual void Load(const char* path);
 		virtual void EndLoad();
 		void Overwrite(const unsigned char* data, unsigned int sizeX, unsigned int sizeY);

@@ -112,10 +112,10 @@ void Chat::ChatManager::DrawPopup()
 			ImGui::TextUnformatted("Image file is too big!\nMaximum is 8388608 (8M) bytes");
 			break;
 		case TextureError::IMG_TOO_SMALL:
-			ImGui::TextUnformatted("Image resolution is too small!\nMinimum is 16/16 pixels");
+			ImGui::TextUnformatted("Image resolution is too small!\nMinimum is / pixels");
 			break;
 		case TextureError::IMG_TOO_BIG:
-			ImGui::TextUnformatted("Image resolution is too big!\nMaximum is 256/256 pixels");
+			ImGui::TextUnformatted("Image resolution is too big!\nMaximum is / pixels");
 			break;
 		case TextureError::IMG_INVALID:
 			ImGui::TextUnformatted("Image file is invalid or corrupted!");

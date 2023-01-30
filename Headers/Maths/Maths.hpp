@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 
+#include "Core/Types.hpp"
+
 namespace Maths
 {
 
@@ -552,7 +554,12 @@ namespace Maths
 
         inline bool isEqual(float a, float b, float prec);
 
-        inline bool isEqualVec4(Vec4 a, Vec4 b, float prec);
+        // Returns a string with the hex representation of number
+        inline std::string GetHex(u64 number);
+
+        // Fills the given buffer with the hex representation of number
+        // WARNING: buffer must be at least 16 char long
+        inline void GetHex(char* buffer, u64 number);
 
         void GenerateSphere(int x, int y, std::vector<Vec3>* PosOut, std::vector<Vec3>* NormOut, std::vector<Vec2>* UVOut);
 

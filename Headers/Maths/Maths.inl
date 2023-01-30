@@ -745,8 +745,26 @@ namespace Maths
         return (a - prec < b&& a + prec > b);
     }
 
-    inline bool Util::isEqualVec4(Vec4 a, Vec4 b, float prec)
+    static const char* digits = "0123456789ABCDEF";
+
+    inline std::string Util::GetHex(u64 number)
     {
-        return (isEqual(b.x, a.x, prec) && isEqual(b.y, a.y, prec) && isEqual(b.z, a.z, prec) && isEqual(b.w, a.w, prec));
+        std::string result = std::string();
+        result.reserve(16);
+        for (u8 i = 0; i < 16; i++)
+        {
+            u8 digit = (number >> (i * 4)) & 0xf;
+            result[i] = digits[digit];
+        }
+        return result;
+    }
+
+    inline void Util::GetHex(char* buffer, u64 number)
+    {
+        for (u8 i = 0; i < 16; i++)
+        {
+            u8 digit = (number >> (i * 4)) & 0xf;
+            buffer[i] = digits[digit];
+        }
     }
 }

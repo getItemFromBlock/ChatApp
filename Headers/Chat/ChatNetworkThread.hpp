@@ -22,7 +22,16 @@ namespace Chat
 		USER_DISCONNECT,
 		MESSAGE_TEXT,
 		MESSAGE_IMAGE,
-		USER_UPDATE,
+		USER_UPDATE_NAME,
+		USER_UPDATE_COLOR,
+		USER_UPDATE_ICON,
+	};
+
+	enum class ChatNetworkState : u8
+	{
+		DISCONNECTED,
+		CONNECTED,
+		WAITING_CONNECTION,
 	};
 
 	class ActionData
@@ -54,13 +63,7 @@ namespace Chat
 		std::vector<ActionData> actions;
 		Core::Signal signal = Core::Signal(false);
 		Core::Signal shouldQuit = Core::Signal(false);
-	};
-
-	enum class ChatNetworkState : u8
-	{
-		DISCONNECTED,
-		CONNECTED,
-		WAITING_CONNECTION,
+		ChatNetworkState state = ChatNetworkState::DISCONNECTED;
 	};
 
 	class ChatClientThread : public ChatNetworkThread
@@ -75,7 +78,6 @@ namespace Chat
 
 		void ThreadFunc();
 	private:
-		ChatNetworkState state = ChatNetworkState::DISCONNECTED;
 	};
 
 }

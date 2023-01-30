@@ -86,15 +86,40 @@ TextureError Resources::Texture::TryLoad(const char* path, Texture* tex, Maths::
 		if (res.x < minSize.x || res.y < minSize.y)
 		{
 			stbi_image_free(tex->ImageData);
+			tex->ImageData = nullptr;
 			return TextureError::IMG_TOO_SMALL;
 		}
 		else if (res.x > maxSize.x || res.y > maxSize.y)
 		{
 			stbi_image_free(tex->ImageData);
+			tex->ImageData = nullptr;
 			return TextureError::IMG_TOO_BIG;
 		}
 	}
 	tex->EndLoad();
+	return TextureError::NONE;
+}
+
+TextureError Resources::Texture::LoadFromMemory(u64 dataSizeIn, unsigned char* dataIn, std::string& ext, Maths::IVec2 resolution)
+{
+	fileType = ext;
+	dataSize = dataSizeIn;
+	FileData = dataIn;
+	int nrChannels;
+	stbi_set_flip_vertically_on_load_thread(false);
+	ImageData = stbi_load_from_memory(FileData, dataSize, &sizeX, &sizeY, &nrChannels, 4);
+	if (!ImageData)
+	{
+		return TextureError::IMG_INVALID;
+	}
+	Maths::IVec2 res = Maths::IVec2(GetTextureWidth(), GetTextureHeight());
+	if (res.x != resolution.x || res.y != resolution.y)
+	{
+		stbi_image_free(ImageData);
+		ImageData = nullptr;
+		return TextureError::IMG_TOO_BIG;
+	}
+	EndLoad();
 	return TextureError::NONE;
 }
 
