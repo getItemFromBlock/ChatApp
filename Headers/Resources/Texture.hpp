@@ -48,7 +48,7 @@ namespace Resources
 		static const char* GetSTBIError();
 		static TextureError TryLoad(const char* path, Texture* ptr, Maths::Vec2 minSize = Maths::Vec2(0,0), Maths::Vec2 maxSize = Maths::Vec2(0,0), u64 maxFileSize = -1);
 
-		TextureError LoadFromMemory(u64 dataSize, unsigned char* dataIn, std::string& ext, Maths::IVec2 resolution);
+		TextureError LoadFromMemory(u64 dataSize, unsigned char* dataIn, std::string& ext, std::string& p, Maths::IVec2 resolution);
 
 		virtual void Load(const char* path);
 		virtual void EndLoad();
@@ -81,9 +81,12 @@ namespace Resources
 		static GLFWimage* ReadIcon(const char* path);
 		static void SetUnitLimit(int value);
 
-		u8* GetFileData() { return FileData; }
-		u64 GetFileDataSize() { return dataSize; }
-		u8* GetImageData() { return ImageData; }
+		u8* GetFileData() const { return FileData; }
+		u64 GetFileDataSize() const { return dataSize; }
+		u8* GetImageData() const { return ImageData; }
+
+		const std::string& GetPath() const { return path; }
+		const std::string& GetFileType() const { return fileType; }
 
 		void SaveFileData(std::string& name);
 	protected:
@@ -99,6 +102,7 @@ namespace Resources
 		u64 dataSize = 0;
 		Core::Signal loaded;
 		std::string fileType;
+		std::string path;
 
 		static inline int MAX_TEXTURE_UNIT = 16;
 		static inline int TEXTURE_UPPER = 4;

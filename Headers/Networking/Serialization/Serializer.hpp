@@ -25,7 +25,7 @@ namespace Networking::Serialization
 		void Write(s64 in);
 		void Write(f32 in);
 		void Write(f64 in);
-		void Write(u8* dataIn, u64 dataSize);
+		void Write(const u8* dataIn, u64 dataSize);
 	private:
 		std::vector<u8> buffer;
 	};

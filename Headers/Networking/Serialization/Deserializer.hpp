@@ -13,6 +13,7 @@ namespace Networking::Serialization
 		~Deserializer() = default;
 
 		const u64 CursorPos() const { return cPos; }
+		const u64 BufferSize() const { return bufferSize; }
 
 		bool Read(u8& in);
 		bool Read(s8& in);

@@ -49,9 +49,10 @@ const char* Resources::Texture::GetSTBIError()
 	return stbi_failure_reason();
 }
 
-TextureError Resources::Texture::TryLoad(const char* path, Texture* tex, Maths::Vec2 minSize, Maths::Vec2 maxSize, u64 maxFileSize)
+TextureError Resources::Texture::TryLoad(const char* pathIn, Texture* tex, Maths::Vec2 minSize, Maths::Vec2 maxSize, u64 maxFileSize)
 {
-	std::filesystem::path p = path;
+	
+	std::filesystem::path p = pathIn;
 	if (!std::filesystem::exists(p))
 	{
 		return TextureError::NO_FILE;
@@ -61,6 +62,7 @@ TextureError Resources::Texture::TryLoad(const char* path, Texture* tex, Maths::
 		return TextureError::FILE_TOO_BIG;
 	}
 	tex->fileType = p.extension().string();
+	tex->path = pathIn;
 	std::ifstream file(p, std::ios::ate | std::ios::binary);
 	if (file.fail())
 	{
@@ -100,8 +102,9 @@ TextureError Resources::Texture::TryLoad(const char* path, Texture* tex, Maths::
 	return TextureError::NONE;
 }
 
-TextureError Resources::Texture::LoadFromMemory(u64 dataSizeIn, unsigned char* dataIn, std::string& ext, Maths::IVec2 resolution)
+TextureError Resources::Texture::LoadFromMemory(u64 dataSizeIn, unsigned char* dataIn, std::string& ext, std::string& p, Maths::IVec2 resolution)
 {
+	path = p;
 	fileType = ext;
 	dataSize = dataSizeIn;
 	FileData = dataIn;
@@ -147,15 +150,16 @@ void Texture::SetWrapType(TextureWrapType in, bool bind)
 	wrap = in;
 }
 
-void Texture::Load(const char* path)
+void Texture::Load(const char* pathIn)
 {
+	path = pathIn;
 	if (loaded.Load()) return;
 	int nrChannels;
 	stbi_set_flip_vertically_on_load_thread(ShouldFlipTexture);
-	ImageData = stbi_load(path, &sizeX, &sizeY, &nrChannels, 4);
+	ImageData = stbi_load(pathIn, &sizeX, &sizeY, &nrChannels, 4);
 	if (!ImageData)
 	{
-		std::cout << "ERROR   : Could not load file " << path << std::endl;
+		std::cout << "ERROR   : Could not load file " << pathIn << std::endl;
 		std::cout << stbi_failure_reason() << std::endl;
 	}
 }

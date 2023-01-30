@@ -48,7 +48,6 @@ Chat::ChatClientThread::ChatClientThread(Networking::Address& addressIn)
 		std::cout << "Erreur d’initialisation du socket : " << Networking::Sockets::GetError();
 		return;
 	}
-	client.connect(address);
 	t = std::thread(&ChatClientThread::ThreadFunc, this);
 }
 
@@ -74,6 +73,21 @@ bool ProcessUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::Us
 	return true;
 }
 
+Chat::ActionData SendUserName(Chat::User* user)
+{
+	Chat::ActionData data;
+	Networking::Serialization::Serializer sr;
+	sr.Write(user->userID);
+	sr.Write(user->userName.size());
+	sr.Write(reinterpret_cast<u8*>(user->userName.data()), user->userName.size());
+	data.type = Chat::Action::USER_UPDATE_NAME;
+	data.dataSize = sr.GetBufferSize();
+	u8* tmpbuffer = new u8[data.dataSize];
+	std::copy(sr.GetBuffer(), sr.GetBuffer() + data.dataSize, tmpbuffer);
+	data.data = tmpbuffer;
+	return data;
+}
+
 bool ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users)
 {
 	Chat::User* user;
@@ -87,12 +101,27 @@ bool ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::U
 	return true;
 }
 
+Chat::ActionData SendUserColor(Chat::User* user)
+{
+	Chat::ActionData data;
+	Networking::Serialization::Serializer sr;
+	sr.Write(user->userID);
+	sr.Write(user->userColor.x);
+	sr.Write(user->userColor.y);
+	sr.Write(user->userColor.z);
+	data.type = Chat::Action::USER_UPDATE_COLOR;
+	data.dataSize = sr.GetBufferSize();
+	u8* tmpbuffer = new u8[data.dataSize];
+	std::copy(sr.GetBuffer(), sr.GetBuffer() + data.dataSize, tmpbuffer);
+	data.data = tmpbuffer;
+	return data;
+}
+
 bool ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures)
 {
 	Chat::User* user;
 	u64 userID;
-	u64 messID;
-	if (!dr.Read(userID) || !dr.Read(messID))
+	if (!dr.Read(userID))
 	{
 		return false;
 	}
@@ -107,7 +136,7 @@ bool ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::Us
 	if (!dr.Read(extSize)) return false;
 	texExt.reserve(extSize);
 	if (!dr.Read(reinterpret_cast<u8*>(texExt.data()), extSize)) return false;
-	texPath = Maths::Util::GetHex(messID) + texPath;
+	texPath = Maths::Util::GetHex(userID) + texPath;
 	Resources::Texture* tex = textures->GetOrCreateTexture(texPath);
 	Maths::IVec2 resolution;
 	if (!dr.Read(resolution.x) || !dr.Read(resolution.y) || resolution.x < 16 || resolution.y < 16 || resolution.x > 256 || resolution.y > 16) return false;
@@ -119,8 +148,29 @@ bool ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::Us
 		delete[] data;
 		return false;
 	}
-	if (tex->LoadFromMemory(texDataSize, data, texExt, resolution) != TextureError::NONE) return false;
+	if (tex->LoadFromMemory(texDataSize, data, texExt, texPath, resolution) != TextureError::NONE) return false;
 	return true;
+}
+
+Chat::ActionData SendUserIcon(Chat::User* user)
+{
+	Chat::ActionData data;
+	Networking::Serialization::Serializer sr;
+	sr.Write(user->userID);
+	sr.Write(user->userTex->GetPath().size());
+	sr.Write(reinterpret_cast<const u8*>(user->userTex->GetPath().c_str()), user->userTex->GetPath().size());
+	sr.Write(user->userTex->GetFileType().size());
+	sr.Write(reinterpret_cast<const u8*>(user->userTex->GetFileType().c_str()), user->userTex->GetFileType().size());
+	sr.Write(user->userTex->GetTextureWidth());
+	sr.Write(user->userTex->GetTextureHeight());
+	sr.Write(user->userTex->GetFileDataSize());
+	sr.Write(user->userTex->GetFileData(), user->userTex->GetFileDataSize());
+	data.type = Chat::Action::USER_UPDATE_ICON;
+	data.dataSize = sr.GetBufferSize();
+	u8* tmpbuffer = new u8[data.dataSize];
+	std::copy(sr.GetBuffer(), sr.GetBuffer() + data.dataSize, tmpbuffer);
+	data.data = tmpbuffer;
+	return data;
 }
 
 bool ProcessTextMessage(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager)
@@ -195,9 +245,16 @@ void Chat::ChatClientThread::Update(f32 dt, ChatManager* manager, UserManager* u
 				std::cout << "Warning, Invalid action type" << std::endl;
 				break;
 			}
+			delete[] a.data;
 		}
 		ChatNetworkThread::Update(dt);
 	}
+}
+
+void Chat::ChatClientThread::Connect()
+{
+	if (state != ChatNetworkState::DISCONNECTED || connect.Load()) return;
+	connect.Store(true);
 }
 
 void Chat::ChatClientThread::ThreadFunc()
@@ -206,20 +263,29 @@ void Chat::ChatClientThread::ThreadFunc()
 	{
 		if (signal.Load())
 		{
-			Networking::Serialization::Serializer sr;
-			for (size_t i = 0; i < actions.size(); i++)
+			std::vector<ActionData> response;
+			if (state == ChatNetworkState::CONNECTED)
 			{
-				sr.Write(static_cast<u8>(actions[i].type));
-				sr.Write(actions[i].dataSize);
-				if (actions[i].dataSize != 0)
+				Networking::Serialization::Serializer sr;
+				for (size_t i = 0; i < actions.size(); i++)
 				{
-					sr.Write(static_cast<u8*>(actions[i].data), actions[i].dataSize);
+					sr.Write(static_cast<u8>(actions[i].type));
+					sr.Write(actions[i].dataSize);
+					if (actions[i].dataSize != 0)
+					{
+						sr.Write(static_cast<u8*>(actions[i].data), actions[i].dataSize);
+					}
 				}
+				client.sendTo(address, sr.GetBuffer(), sr.GetBufferSize(), 0);
 			}
-			client.sendTo(address, sr.GetBuffer(), sr.GetBufferSize(), 0);
+			else if (connect.Load() && state != ChatNetworkState::WAITING_CONNECTION)
+			{
+				client.connect(address);
+
+			}
 			actions.clear();
 			client.receive();
-			client.processSend();
+			if (state == ChatNetworkState::CONNECTED) client.processSend();
 			auto v = client.poll();
 			for (auto& m : v)
 			{
@@ -242,27 +308,128 @@ void Chat::ChatClientThread::ThreadFunc()
 				{
 					auto ud = m->as<Networking::Messages::UserData>();
 					Networking::Serialization::Deserializer dr(ud->data.data(), ud->data.size());
-					ActionData action;
-					if (!dr.Read(reinterpret_cast<u8&>(action.type)) || !dr.Read(action.dataSize))
+					while (dr.CursorPos() < dr.BufferSize())
 					{
-						std::cout << "Warning, Corrupted message found!" << std::endl;
-						continue;
-					}
-					if (action.dataSize != 0)
-					{
-						u8* tmpData = new u8[action.dataSize];
-						if (!dr.Read(tmpData, action.dataSize))
+						ActionData action;
+						if (!dr.Read(reinterpret_cast<u8&>(action.type)) || !dr.Read(action.dataSize))
 						{
 							std::cout << "Warning, Corrupted message found!" << std::endl;
-							continue;
+							break;
 						}
-						action.data = tmpData;
+						if (action.dataSize != 0)
+						{
+							u8* tmpData = new u8[action.dataSize];
+							if (!dr.Read(tmpData, action.dataSize))
+							{
+								std::cout << "Warning, Corrupted message found!" << std::endl;
+								break;
+							}
+							action.data = tmpData;
+						}
+						actions.push_back(std::move(action));
 					}
-					actions.push_back(std::move(action));
+					
 				}
 				else if (m->is<Networking::Messages::Disconnection>())
 				{
 					state = ChatNetworkState::DISCONNECTED;
+				}
+			}
+			signal.Store(true);
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	client.disconnect(address);
+	client.processSend();
+}
+
+Chat::ChatServerThread::ChatServerThread(Networking::Address& addressIn)
+{
+	address = addressIn;
+	if (!client.init(address.port()))
+	{
+		std::cout << "Erreur d’initialisation du socket : " << Networking::Sockets::GetError();
+		return;
+	}
+	state = ChatNetworkState::CONNECTED;
+	t = std::thread(&ChatServerThread::ThreadFunc, this);
+}
+
+Chat::ChatServerThread::~ChatServerThread()
+{
+}
+
+void Chat::ChatServerThread::Update(f32 dt, ChatManager* manager, UserManager* users, Resources::TextureManager* textures)
+{
+}
+
+void Chat::ChatServerThread::ThreadFunc()
+{
+	while (!shouldQuit.Load())
+	{
+		if (signal.Load())
+		{
+			std::vector<ActionData> response;
+			Networking::Serialization::Serializer sr;
+			for (size_t i = 0; i < actions.size(); i++)
+			{
+				sr.Write(static_cast<u8>(actions[i].type));
+				sr.Write(actions[i].dataSize);
+				if (actions[i].dataSize != 0)
+				{
+					sr.Write(static_cast<u8*>(actions[i].data), actions[i].dataSize);
+				}
+			}
+			client.sendTo(address, sr.GetBuffer(), sr.GetBufferSize(), 0);
+			actions.clear();
+			client.receive();
+			client.processSend();
+			auto v = client.poll();
+			for (auto& m : v)
+			{
+				if (m->is<Networking::Messages::IncomingConnection>())
+				{
+					client.connect(m->as<Networking::Messages::IncomingConnection>()->emitter());
+					Networking::Serialization::Serializer sr;
+					sr.Write(time(nullptr));
+					sr.Write(time(nullptr));
+					sr.Write(time(nullptr));
+					//actions.push_back(ActionData(Action::USER_CONNECT,));
+					// TODO
+				}
+				else if (m->is<Networking::Messages::Connection>())
+				{
+					// Should not happens on server side
+				}
+				else if (m->is<Networking::Messages::UserData>())
+				{
+					auto ud = m->as<Networking::Messages::UserData>();
+					Networking::Serialization::Deserializer dr(ud->data.data(), ud->data.size());
+					while (dr.CursorPos() < dr.BufferSize())
+					{
+						ActionData action;
+						if (!dr.Read(reinterpret_cast<u8&>(action.type)) || !dr.Read(action.dataSize))
+						{
+							std::cout << "Warning, Corrupted message found!" << std::endl;
+							break;
+						}
+						if (action.dataSize != 0)
+						{
+							u8* tmpData = new u8[action.dataSize];
+							if (!dr.Read(tmpData, action.dataSize))
+							{
+								std::cout << "Warning, Corrupted message found!" << std::endl;
+								break;
+							}
+							action.data = tmpData;
+						}
+						actions.push_back(std::move(action));
+					}
+
+				}
+				else if (m->is<Networking::Messages::Disconnection>())
+				{
+					client.disconnect(m->as<Networking::Messages::Disconnection>()->emitter());
 				}
 			}
 			signal.Store(true);

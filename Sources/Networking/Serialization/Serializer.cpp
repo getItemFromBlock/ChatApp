@@ -77,7 +77,7 @@ void Serializer::Write(f64 in)
 	}
 }
 
-void Networking::Serialization::Serializer::Write(u8* dataIn, u64 dataSize)
+void Networking::Serialization::Serializer::Write(const u8* dataIn, u64 dataSize)
 {
 	buffer.resize(buffer.size() + dataSize);
 	std::copy(dataIn, dataIn + dataSize, buffer.data() + (buffer.size() - dataSize));

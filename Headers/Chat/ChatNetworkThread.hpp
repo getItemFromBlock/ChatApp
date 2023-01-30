@@ -55,6 +55,8 @@ namespace Chat
 		void Update(f32 dt);
 
 		void PushAction(Action type, void* data, u64 dataSize);
+
+		ChatNetworkState GetState() const { return state; }
 	protected:
 		std::thread t;
 		Networking::Address address;
@@ -62,6 +64,7 @@ namespace Chat
 		std::vector<ActionData> actionQueue;
 		std::vector<ActionData> actions;
 		Core::Signal signal = Core::Signal(false);
+		Core::Signal connect = Core::Signal(false);
 		Core::Signal shouldQuit = Core::Signal(false);
 		ChatNetworkState state = ChatNetworkState::DISCONNECTED;
 	};
@@ -74,7 +77,23 @@ namespace Chat
 
 		virtual ~ChatClientThread() override;
 
-		virtual void Update(f32 dt, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
+		void Update(f32 dt, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
+
+		void Connect();
+
+		void ThreadFunc();
+	private:
+	};
+
+	class ChatServerThread : public ChatNetworkThread
+	{
+	public:
+		ChatServerThread() = delete;
+		ChatServerThread(Networking::Address& address);
+
+		virtual ~ChatServerThread() override;
+
+		void Update(f32 dt, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
 
 		void ThreadFunc();
 	private:
