@@ -61,6 +61,9 @@ namespace Networking
 			void sendTo(const Address& target, std::vector<u8>&& data, u32 channelIndex);
 			void sendTo(const Address& target, const u8* data, size_t dataSize, u32 channelIndex) { sendTo(target, std::vector<u8>(data, data + dataSize), channelIndex); }
 
+			void broadCast(std::vector<u8>&& data, u32 channelIndex);
+			void broadCast(const u8* data, size_t dataSize, u32 channelIndex) { broadCast(std::vector<u8>(data, data + dataSize), channelIndex); }
+
 			// This performs operations on existing clients. Must not be called while calling receive
 			void processSend();
 			// This performs operations on existing clients. Must not be called while calling processSend
@@ -105,11 +108,13 @@ namespace Networking
 				enum class Type {
 					Connect,
 					SendTo,
+					BroadCast,
 					Disconnect,
 				};
 			public:
 				static Operation Connect(const Address& target) { return Operation(Type::Connect, target); }
 				static Operation SendTo(const Address& target, std::vector<u8>&& data, u32 channel) { return Operation(Type::SendTo, target, std::move(data), channel); }
+				static Operation BroadCast(std::vector<u8>&& data, u32 channel) { return Operation(Type::BroadCast, Address(), std::move(data), channel); }
 				static Operation Disconnect(const Address& target) { return Operation(Type::Disconnect, target); }
 
 				Operation(Type type, const Address& target)

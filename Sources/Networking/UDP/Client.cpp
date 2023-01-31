@@ -95,6 +95,14 @@ namespace Networking::UDP
 		mPendingOperations.push_back(Operation::SendTo(target, std::move(data), channelIndex));
 	}
 
+	void Client::broadCast(std::vector<u8>&& data, u32 channelIndex)
+	{
+#if NETWORK_THREAD_SAFE
+		OperationsLock lock(mOperationsLock); $
+#endif
+			mPendingOperations.push_back(Operation::BroadCast(std::move(data), channelIndex));
+	}
+
 	void Client::processSend()
 	{
 		// Process pending operations
@@ -118,6 +126,13 @@ namespace Networking::UDP
 			{
 				if (auto client = getClient(op.mTarget, true))
 					client->send(std::move(op.mData), op.mChannel);
+			} break;
+			case Operation::Type::BroadCast:
+			{
+				for (auto& client : mClients)
+				{
+					client->send(std::move(op.mData), op.mChannel);
+				}
 			} break;
 			case Operation::Type::Disconnect:
 			{

@@ -11,6 +11,8 @@
 #include "ChatMessage.hpp"
 #include "UserManager.hpp"
 #include "Resources/TextureManager.hpp"
+#include "Networking/Serialization/Serializer.hpp"
+#include "Networking/Serialization/Deserializer.hpp"
 
 namespace Chat
 {
@@ -49,7 +51,7 @@ namespace Chat
 	class ChatNetworkThread
 	{
 	public:
-		ChatNetworkThread();
+		ChatNetworkThread(User* selfUser);
 
 		virtual ~ChatNetworkThread();
 
@@ -67,6 +69,7 @@ namespace Chat
 		Core::Signal signal = Core::Signal(false);
 		Core::Signal connect = Core::Signal(false);
 		Core::Signal shouldQuit = Core::Signal(false);
+		User* self = nullptr;
 		ChatNetworkState state = ChatNetworkState::DISCONNECTED;
 	};
 
@@ -74,7 +77,7 @@ namespace Chat
 	{
 	public:
 		ChatClientThread() = delete;
-		ChatClientThread(Networking::Address& address);
+		ChatClientThread(Networking::Address& address, User* selfUser);
 
 		virtual ~ChatClientThread() override;
 
@@ -90,7 +93,7 @@ namespace Chat
 	{
 	public:
 		ChatServerThread() = delete;
-		ChatServerThread(Networking::Address& address);
+		ChatServerThread(Networking::Address& address, User* selfUser);
 
 		virtual ~ChatServerThread() override;
 
@@ -98,6 +101,10 @@ namespace Chat
 
 		void ThreadFunc();
 	private:
+		bool ProcessServerTextMessage(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
+		bool ProcessServerUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
+		bool ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
+
 		std::forward_list<u64> acceptedClients;
 	};
 
