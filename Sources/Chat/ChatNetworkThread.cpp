@@ -476,6 +476,58 @@ bool Chat::ChatServerThread::ProcessServerUserNameUpdate(Networking::Serializati
 	return true;
 }
 
+bool Chat::ChatServerThread::ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures)
+{
+	Chat::User* user;
+	u64 userID;
+	if (!dr.Read(userID))
+	{
+		return false;
+	}
+	user = users->GetOrCreateUser(userID);
+	std::string texPath;
+	u64 nameSize;
+	if (!dr.Read(nameSize)) return false;
+	texPath.reserve(nameSize);
+	if (!dr.Read(reinterpret_cast<u8*>(texPath.data()), nameSize)) return false;
+	std::string texExt;
+	u64 extSize;
+	if (!dr.Read(extSize)) return false;
+	texExt.reserve(extSize);
+	if (!dr.Read(reinterpret_cast<u8*>(texExt.data()), extSize)) return false;
+	texPath = Maths::Util::GetHex(userID) + texPath;
+	Resources::Texture* tex = textures->GetOrCreateTexture(texPath);
+	Maths::IVec2 resolution;
+	if (!dr.Read(resolution.x) || !dr.Read(resolution.y) || resolution.x < 16 || resolution.y < 16 || resolution.x > 256 || resolution.y > 16) return false;
+	u64 texDataSize;
+	if (!dr.Read(texDataSize) || texDataSize > 0x40000) return false;
+	u8* data = new u8[texDataSize];
+	if (!dr.Read(data, texDataSize))
+	{
+		delete[] data;
+		return false;
+	}
+	if (tex->LoadFromMemory(texDataSize, data, texExt, texPath, resolution) != TextureError::NONE) return false;
+	Chat::ActionData action;
+	Networking::Serialization::Serializer sr;
+	sr.Write(user->userID);
+	sr.Write(user->userTex->GetPath().size());
+	sr.Write(reinterpret_cast<const u8*>(user->userTex->GetPath().c_str()), user->userTex->GetPath().size());
+	sr.Write(user->userTex->GetFileType().size());
+	sr.Write(reinterpret_cast<const u8*>(user->userTex->GetFileType().c_str()), user->userTex->GetFileType().size());
+	sr.Write(user->userTex->GetTextureWidth());
+	sr.Write(user->userTex->GetTextureHeight());
+	sr.Write(user->userTex->GetFileDataSize());
+	sr.Write(user->userTex->GetFileData(), user->userTex->GetFileDataSize());
+	action.type = Chat::Action::USER_UPDATE_ICON;
+	action.dataSize = sr.GetBufferSize();
+	u8* tmpbuffer = new u8[action.dataSize];
+	std::copy(sr.GetBuffer(), sr.GetBuffer() + action.dataSize, tmpbuffer);
+	action.data = tmpbuffer;
+	actionQueue.push_back(action);
+	return true;
+}
+
 void Chat::ChatServerThread::Update(f32 dt, ChatManager* manager, UserManager* users, Resources::TextureManager* textures)
 {
 	if (!signal.Load())
@@ -504,7 +556,7 @@ void Chat::ChatServerThread::Update(f32 dt, ChatManager* manager, UserManager* u
 				ProcessServerUserColorUpdate(dr, users);
 				break;
 			case Action::USER_UPDATE_ICON:
-				// TODO
+				ProcessServerUserIconUpdate(dr, users, textures);
 				break;
 			default:
 				std::cout << "Warning, Invalid action type" << std::endl;

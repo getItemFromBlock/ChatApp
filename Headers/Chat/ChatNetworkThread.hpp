@@ -104,6 +104,7 @@ namespace Chat
 		bool ProcessServerTextMessage(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
 		bool ProcessServerUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
 		bool ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
+		bool ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures);
 
 		std::forward_list<u64> acceptedClients;
 	};
