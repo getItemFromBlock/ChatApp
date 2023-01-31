@@ -2,6 +2,7 @@
 
 #include <thread>
 #include <vector>
+#include <forward_list>
 
 #include "Networking/Address.hpp"
 #include "Networking/UDP/Client.hpp"
@@ -97,6 +98,7 @@ namespace Chat
 
 		void ThreadFunc();
 	private:
+		std::forward_list<u64> acceptedClients;
 	};
 
 }

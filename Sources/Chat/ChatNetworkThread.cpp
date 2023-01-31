@@ -394,8 +394,7 @@ void Chat::ChatServerThread::ThreadFunc()
 					sr.Write(time(nullptr));
 					sr.Write(time(nullptr));
 					sr.Write(time(nullptr));
-					//actions.push_back(ActionData(Action::USER_CONNECT,));
-					// TODO
+					acceptedClients.push_front(m->emmiterId());
 				}
 				else if (m->is<Networking::Messages::Connection>())
 				{

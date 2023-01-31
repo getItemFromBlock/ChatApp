@@ -19,6 +19,7 @@ namespace Chat
 
 		std::string userName;
 		u64 userID = 0;
+		u64 networkID = 0;
 		ImVec4 userColor = ImVec4(1,1,1,1);
 		const Resources::Texture* userTex;
 	private:
