@@ -418,7 +418,6 @@ bool Chat::ChatServerThread::ProcessServerUserColorUpdate(Networking::Serializat
 	}
 	user = users->GetOrCreateUser(userID);
 	if (!dr.Read(user->userColor.x) || !dr.Read(user->userColor.y) || !dr.Read(user->userColor.z)) return false;
-
 	Networking::Serialization::Serializer sr;
 	sr.Write(user->userID);
 	sr.Write(user->userColor.x);
