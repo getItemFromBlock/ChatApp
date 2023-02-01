@@ -55,7 +55,11 @@ namespace Chat
 
 		virtual ~ChatNetworkThread();
 
+		void SetAddress(Networking::Address& address);
+
 		void Update(f32 dt);
+
+		virtual void TryConnect() = 0;
 
 		void PushAction(Action type, void* data, u64 dataSize);
 
@@ -77,13 +81,13 @@ namespace Chat
 	{
 	public:
 		ChatClientThread() = delete;
-		ChatClientThread(Networking::Address& address, User* selfUser);
+		ChatClientThread(User* selfUser);
+
+		virtual void TryConnect() override;
 
 		virtual ~ChatClientThread() override;
 
 		void Update(f32 dt, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
-
-		void Connect();
 
 		void ThreadFunc();
 	private:

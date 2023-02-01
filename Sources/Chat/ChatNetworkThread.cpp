@@ -38,15 +38,19 @@ void Chat::ChatNetworkThread::PushAction(Action type, void* data, u64 dataSize)
 	actionQueue.push_back(ActionData(type, data, dataSize));
 }
 
-Chat::ChatClientThread::ChatClientThread(Networking::Address& addressIn, User* selfUser) : ChatNetworkThread(selfUser)
+Chat::ChatClientThread::ChatClientThread(User* selfUser) : ChatNetworkThread(selfUser)
 {
-	address = addressIn;
 	if (!client.init(0))
 	{
 		std::cout << "Erreur d’initialisation du socket : " << Networking::Sockets::GetError();
 		return;
 	}
 	t = std::thread(&ChatClientThread::ThreadFunc, this);
+}
+
+void Chat::ChatNetworkThread::SetAddress(Networking::Address& addressIn)
+{
+	address = addressIn;
 }
 
 Chat::ChatClientThread::~ChatClientThread()
@@ -249,7 +253,7 @@ void Chat::ChatClientThread::Update(f32 dt, ChatManager* manager, UserManager* u
 	}
 }
 
-void Chat::ChatClientThread::Connect()
+void Chat::ChatClientThread::TryConnect()
 {
 	if (state != ChatNetworkState::DISCONNECTED || connect.Load()) return;
 	connect.Store(true);
@@ -276,10 +280,10 @@ void Chat::ChatClientThread::ThreadFunc()
 				}
 				client.sendTo(address, sr.GetBuffer(), sr.GetBufferSize(), 0);
 			}
-			else if (connect.Load() && state != ChatNetworkState::WAITING_CONNECTION)
+			else if (connect.Load() && state == ChatNetworkState::DISCONNECTED)
 			{
 				client.connect(address);
-
+				state = ChatNetworkState::WAITING_CONNECTION;
 			}
 			actions.clear();
 			client.receive();
@@ -378,10 +382,9 @@ bool Chat::ChatServerThread::ProcessServerTextMessage(Networking::Serialization:
 	u64 userID;
 	u64 messID = messageCounter;
 	messageCounter++;
-	u64 mTime;
 	std::string tmp;
 	u64 size;
-	if (!dr.Read(mTime) || !dr.Read(userID))
+	if (!dr.Read(userID))
 	{
 		return false;
 	}
@@ -390,10 +393,11 @@ bool Chat::ChatServerThread::ProcessServerTextMessage(Networking::Serialization:
 	tmp.reserve(size);
 	if (!dr.Read(reinterpret_cast<u8*>(tmp.data()), size)) return false;
 	user->userName = tmp;
-	std::unique_ptr<Chat::TextMessage> mess = std::make_unique<Chat::TextMessage>(tmp, users->GetUser(userID), mTime, messID);
+	u64 receivedTime = time(nullptr);
+	std::unique_ptr<Chat::TextMessage> mess = std::make_unique<Chat::TextMessage>(tmp, users->GetUser(userID), receivedTime, messID);
 	manager->ReceiveMessage(std::move(mess));
 	Networking::Serialization::Serializer sr;
-	sr.Write(mTime);
+	sr.Write(receivedTime);
 	sr.Write(userID);
 	sr.Write(messID);
 	sr.Write(size);

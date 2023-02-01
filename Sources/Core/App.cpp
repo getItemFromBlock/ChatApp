@@ -107,7 +107,7 @@ int App::Init()
 	textures = std::make_unique<Resources::TextureManager>();
 	users = std::make_unique<Chat::UserManager>(*textures.get());
 
-	selfID = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+	selfID = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 	selfUser = users->GetOrCreateUser(selfID);
 	selfUser->userName = "User";
 

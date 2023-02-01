@@ -32,8 +32,6 @@ namespace Chat
 
 		virtual void Render();
 
-		virtual void Update(f32 dt) = 0;
-
 		void ReceiveMessage(std::unique_ptr<ChatMessage>&& mess);
 
 	protected:
@@ -65,9 +63,10 @@ namespace Chat
 
 		void Render() override;
 
-		void Update(f32 dt) override;
 	private:
-
+		std::string serverAddress;
+		u16 serverPort = (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count()) & 0xffff;
+		bool isIPV6 = false;
 	};
 
 }
