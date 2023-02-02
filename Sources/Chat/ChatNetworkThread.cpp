@@ -33,9 +33,14 @@ void Chat::ChatNetworkThread::Update()
 	signal.Store(true);
 }
 
-void Chat::ChatNetworkThread::PushAction(Action type, u8* data, u64 dataSize)
+void Chat::ChatNetworkThread::PushAction(Action type, const u8* data, u64 dataSize)
 {
 	actionQueue.push_back(std::move(ActionData(type, data, dataSize)));
+}
+
+void Chat::ChatNetworkThread::PushAction(ActionData&& action)
+{
+	actionQueue.push_back(std::move(action));
 }
 
 Chat::ChatClientThread::ChatClientThread(User* selfUser) : ChatNetworkThread(selfUser)
@@ -57,11 +62,11 @@ Chat::ChatClientThread::~ChatClientThread()
 {
 }
 
-bool ProcessUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users)
+bool Chat::ChatClientThread::ProcessUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users)
 {
 	Chat::User* user;
 	u64 userID;
-	if (!dr.Read(userID))
+	if (!dr.Read(userID) || userID == self->userID)
 	{
 		return false;
 	}
@@ -75,7 +80,7 @@ bool ProcessUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::Us
 	return true;
 }
 
-Chat::ActionData SendUserName(Chat::User* user)
+Chat::ActionData Chat::ChatNetworkThread::SendUserName(Chat::User* user)
 {
 	Chat::ActionData data;
 	Networking::Serialization::Serializer sr;
@@ -87,11 +92,11 @@ Chat::ActionData SendUserName(Chat::User* user)
 	return data;
 }
 
-bool ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users)
+bool Chat::ChatClientThread::ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users)
 {
 	Chat::User* user;
 	u64 userID;
-	if (!dr.Read(userID))
+	if (!dr.Read(userID) || userID == self->userID)
 	{
 		return false;
 	}
@@ -100,7 +105,7 @@ bool ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::U
 	return true;
 }
 
-Chat::ActionData SendUserColor(Chat::User* user)
+Chat::ActionData Chat::ChatNetworkThread::SendUserColor(Chat::User* user)
 {
 	Chat::ActionData data;
 	Networking::Serialization::Serializer sr;
@@ -113,11 +118,11 @@ Chat::ActionData SendUserColor(Chat::User* user)
 	return data;
 }
 
-bool ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures)
+bool Chat::ChatClientThread::ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures)
 {
 	Chat::User* user;
 	u64 userID;
-	if (!dr.Read(userID))
+	if (!dr.Read(userID) || userID == self->userID)
 	{
 		return false;
 	}
@@ -148,7 +153,7 @@ bool ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::Us
 	return true;
 }
 
-Chat::ActionData SendUserIcon(Chat::User* user)
+Chat::ActionData Chat::ChatNetworkThread::SendUserIcon(Chat::User* user)
 {
 	Chat::ActionData data;
 	Networking::Serialization::Serializer sr;
@@ -265,7 +270,10 @@ void Chat::ChatClientThread::ThreadFunc()
 						sr.Write(actions[i].data.data(), actions[i].data.size());
 					}
 				}
-				if (sr.GetBufferSize() > 0) client.sendTo(address, sr.GetBuffer(), sr.GetBufferSize(), 0);
+				if (sr.GetBufferSize() > 0)
+				{
+					client.sendTo(address, sr.GetBuffer(), sr.GetBufferSize(), 0);
+				}
 			}
 			else if (connect.Load() && state == ChatNetworkState::DISCONNECTED)
 			{
@@ -293,6 +301,11 @@ void Chat::ChatClientThread::ThreadFunc()
 							response.push_back(SendUserName(self));
 							response.push_back(SendUserColor(self));
 							response.push_back(SendUserIcon(self));
+						}
+						else
+						{
+							std::cout << "Error, connection refused" << std::endl;
+							state = ChatNetworkState::DISCONNECTED;
 						}
 					}
 				}
@@ -324,6 +337,7 @@ void Chat::ChatClientThread::ThreadFunc()
 				}
 				else if (m->is<Networking::Messages::Disconnection>())
 				{
+					std::cout << "Disconnected" << std::endl;
 					state = ChatNetworkState::DISCONNECTED;
 				}
 			}
@@ -340,12 +354,13 @@ void Chat::ChatClientThread::ThreadFunc()
 			if(sr.GetBufferSize() > 0) client.sendTo(address, sr.GetBuffer(), sr.GetBufferSize(), 0);
 			signal.Store(false);
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	}
 	if (address.isValid())
 	{
 		client.disconnect(address);
 		client.processSend();
+		client.release();
 	}
 }
 
@@ -428,7 +443,7 @@ bool Chat::ChatServerThread::ProcessServerUserColorUpdate(Networking::Serializat
 	return true;
 }
 
-bool Chat::ChatServerThread::ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users)
+bool Chat::ChatServerThread::ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager)
 {
 	u64 networkID;
 	Chat::User* user;
@@ -453,7 +468,21 @@ bool Chat::ChatServerThread::ProcessServerUserNameUpdate(Networking::Serializati
 	{
 		if (*t == networkID)
 		{
-			// TODO make connexion message
+			user->networkID = networkID;
+			u64 messID = GetMessageCounter();
+			u64 receivedTime = time(nullptr);
+			std::unique_ptr<Chat::ConnectionMessage> mess = std::make_unique<Chat::ConnectionMessage>(true, users->GetOrCreateUser(userID), receivedTime, messID);
+			manager->ReceiveMessage(std::move(mess));
+
+			Networking::Serialization::Serializer sr2;
+			sr2.Write(receivedTime);
+			sr2.Write(user->userID);
+			sr2.Write(messID);
+			Chat::ActionData action;
+			action.type = Chat::Action::USER_CONNECT;
+			action.data = std::vector(sr2.GetBuffer(), sr2.GetBuffer() + sr2.GetBufferSize());
+			actionQueue.push_back(std::move(action));
+
 			acceptedClients.erase_after(last);
 			break;
 		}
@@ -516,6 +545,28 @@ bool Chat::ChatServerThread::ProcessServerUserIconUpdate(Networking::Serializati
 	return true;
 }
 
+bool Chat::ChatServerThread::ProcessServerUserDisconnection(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager)
+{
+	u64 netID;
+	if (!dr.Read(netID)) return false;
+	User* user = users->GetUserWithNetID(netID);
+	if (!user) return false;
+	u64 messID = GetMessageCounter();
+	u64 receivedTime = time(nullptr);
+	std::unique_ptr<Chat::ConnectionMessage> mess = std::make_unique<Chat::ConnectionMessage>(false, user, receivedTime, messID);
+	manager->ReceiveMessage(std::move(mess));
+
+	Networking::Serialization::Serializer sr2;
+	sr2.Write(receivedTime);
+	sr2.Write(user->userID);
+	sr2.Write(messID);
+	Chat::ActionData action;
+	action.type = Chat::Action::USER_DISCONNECT;
+	action.data = std::vector(sr2.GetBuffer(), sr2.GetBuffer() + sr2.GetBufferSize());
+	actionQueue.push_back(std::move(action));
+	return true;
+}
+
 void Chat::ChatServerThread::Update(ChatManager* manager, UserManager* users, Resources::TextureManager* textures)
 {
 	if (!signal.Load())
@@ -530,6 +581,7 @@ void Chat::ChatServerThread::Update(ChatManager* manager, UserManager* users, Re
 			case Action::USER_CONNECT:
 				break;
 			case Action::USER_DISCONNECT:
+				ProcessServerUserDisconnection(dr, users, manager);
 				break;
 			case Action::MESSAGE_TEXT:
 				ProcessServerTextMessage(dr, users, manager);
@@ -538,7 +590,7 @@ void Chat::ChatServerThread::Update(ChatManager* manager, UserManager* users, Re
 				// TODO
 				break;
 			case Action::USER_UPDATE_NAME:
-				ProcessServerUserNameUpdate(dr, users);
+				ProcessServerUserNameUpdate(dr, users, manager);
 				break;
 			case Action::USER_UPDATE_COLOR:
 				ProcessServerUserColorUpdate(dr, users);
@@ -572,7 +624,10 @@ void Chat::ChatServerThread::ThreadFunc()
 					sr.Write(actions[i].data.data(), actions[i].data.size());
 				}
 			}
-			if (sr.GetBufferSize() > 0) client.broadCast(sr.GetBuffer(), sr.GetBufferSize(), 0);
+			if (sr.GetBufferSize() > 0)
+			{
+				client.broadCast(sr.GetBuffer(), sr.GetBufferSize(), 0);
+			}
 			actions.clear();
 			client.receive();
 			client.processSend();
@@ -581,7 +636,7 @@ void Chat::ChatServerThread::ThreadFunc()
 			{
 				if (m->is<Networking::Messages::IncomingConnection>())
 				{
-					client.connect(m->as<Networking::Messages::IncomingConnection>()->emitter());
+					client.connect(m->emitter());
 					Networking::Serialization::Serializer sr;
 					sr.Write(time(nullptr));
 					sr.Write(time(nullptr));
@@ -631,20 +686,38 @@ void Chat::ChatServerThread::ThreadFunc()
 						}
 						actions.push_back(std::move(action));
 					}
-
 				}
 				else if (m->is<Networking::Messages::Disconnection>())
 				{
 					client.disconnect(m->as<Networking::Messages::Disconnection>()->emitter());
+					ActionData action;
+					action.type = Action::USER_DISCONNECT;
+					Networking::Serialization::Serializer sr;
+					sr.Write(m->emmiterId());
+					action.data.resize(sr.GetBufferSize());
+					std::copy(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize(), action.data.data());
+					response.push_back(std::move(action));
 				}
 			}
+			Networking::Serialization::Serializer sr2;
+			for (size_t i = 0; i < response.size(); i++)
+			{
+				sr2.Write(static_cast<u8>(response[i].type));
+				sr2.Write(response[i].data.size());
+				if (response[i].data.size() != 0)
+				{
+					sr2.Write(response[i].data.data(), response[i].data.size());
+				}
+			}
+			if (sr2.GetBufferSize() > 0) client.sendTo(address, sr2.GetBuffer(), sr2.GetBufferSize(), 0);
 			signal.Store(false);
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	}
 	if (address.isValid())
 	{
 		client.disconnect(address);
 		client.processSend();
+		client.release();
 	}
 }

@@ -18,6 +18,8 @@ namespace Chat
 
 		User* GetUser(u64 userID);
 
+		User* GetUserWithNetID(u64 networkID);
+
 		User* GetOrCreateUser(u64 userID);
 
 		User* GetDefaultUser();

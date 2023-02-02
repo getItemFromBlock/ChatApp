@@ -17,6 +17,21 @@ void Chat::ServerChatManager::Update()
 	reinterpret_cast<ChatServerThread*>(ntwThread.get())->Update(this, users, textures);
 }
 
+void Chat::ChatManager::UpdateUserName()
+{
+	ntwThread->PushAction(ntwThread->SendUserName(users->GetUser(selfID)));
+}
+
+void Chat::ChatManager::UpdateUserColor()
+{
+	ntwThread->PushAction(ntwThread->SendUserColor(users->GetUser(selfID)));
+}
+
+void Chat::ChatManager::UpdateUserIcon()
+{
+	ntwThread->PushAction(ntwThread->SendUserIcon(users->GetUser(selfID)));
+}
+
 void ChatManager::Render()
 {
 	if (setDown && lastHeight != 0)
@@ -153,9 +168,7 @@ void Chat::ClientChatManager::SendChatMessage()
 	sr.Write(selfID);
 	sr.Write(currentText.size());
 	sr.Write(reinterpret_cast<u8*>(currentText.data()), currentText.size());
-	u8* data = new u8[sr.GetBufferSize()];
-	std::copy(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize(), data);
-	ntwThread->PushAction(Action::MESSAGE_TEXT, data, sr.GetBufferSize());
+	ntwThread->PushAction(Action::MESSAGE_TEXT, sr.GetBuffer(), sr.GetBufferSize());
 	currentText.clear();
 }
 
@@ -219,9 +232,7 @@ void Chat::ServerChatManager::SendChatMessage()
 	sr.Write(messID);
 	sr.Write(currentText.size());
 	sr.Write(reinterpret_cast<u8*>(currentText.data()), currentText.size());
-	u8* tmpbuffer = new u8[sr.GetBufferSize()];
-	std::copy(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize(), tmpbuffer);
-	ntwThread->PushAction(Chat::Action::MESSAGE_TEXT, tmpbuffer, sr.GetBufferSize());
+	ntwThread->PushAction(Chat::Action::MESSAGE_TEXT, sr.GetBuffer(), sr.GetBufferSize());
 	currentText.clear();
 }
 
@@ -242,7 +253,7 @@ void Chat::ServerChatManager::Render()
 			if (ImGui::Button("Create Chat"))
 			{
 				Networking::Address ad;
-				ad = Networking::Address::Any(isIPV6 ? Networking::Address::Type::IPv6 : Networking::Address::Type::IPv4, serverPort);
+				ad = Networking::Address::Loopback(isIPV6 ? Networking::Address::Type::IPv6 : Networking::Address::Type::IPv4, serverPort);
 				if (ad.isValid())
 				{
 					ntwThread->SetAddress(ad);

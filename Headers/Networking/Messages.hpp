@@ -25,6 +25,8 @@ namespace Networking::Messages
 		Base(const Base&) = delete;
 		Base& operator=(const Base&) = delete;
 
+		virtual ~Base() = default;
+
 		enum class Type {
 			IncomingConnection,
 			Connection,
@@ -51,6 +53,8 @@ namespace Networking::Messages
 		IncomingConnection(const IncomingConnection&) = delete;
 		IncomingConnection& operator=(const IncomingConnection&) = delete;
 		IncomingConnection(const Address& emitter, uint64_t emitterid) : Base(Type::IncomingConnection, emitter, emitterid) {}
+
+		virtual ~IncomingConnection() override = default;
 	};
 
 	class Connection : public Base
@@ -67,6 +71,8 @@ namespace Networking::Messages
 		Connection& operator=(const Connection&) = delete;
 		Connection(const Address& emitter, u64 emitterid, Result r) : Base(Type::Connection, emitter, emitterid), result(r) {}
 
+		virtual ~Connection() override = default;
+
 		Result result;
 	};
 
@@ -78,6 +84,8 @@ namespace Networking::Messages
 		ConnectionInterrupted(const ConnectionInterrupted&) = delete;
 		ConnectionInterrupted& operator=(const ConnectionInterrupted&) = delete;
 		ConnectionInterrupted(const Address& emitter, u64 emitterid, bool isDirect) : Base(Type::ConnectionInterrupted, emitter, emitterid), isDirectInterruption(isDirect) {}
+
+		virtual ~ConnectionInterrupted() override = default;
 		// True if the emitter is directly interrupted to us. False if the emitter forwarded an interruption on his side.
 		bool isDirectInterruption;
 	};
@@ -106,6 +114,8 @@ namespace Networking::Messages
 		Disconnection& operator=(const Disconnection&) = delete;
 		Disconnection(const Address& emitter, u64 emitterid, Reason r) : Base(Type::Disconnection, emitter, emitterid), reason(r) {}
 
+		virtual ~Disconnection() override = default;
+
 		Reason reason;
 	};
 
@@ -116,6 +126,9 @@ namespace Networking::Messages
 		UserData(const UserData&) = delete;
 		UserData& operator=(const UserData&) = delete;
 		UserData(const Address& emitter, u64 emitterid, std::vector<unsigned char>&& d, u8 channel) : Base(Type::UserData, emitter, emitterid), data(std::move(d)), channelId(channel) {}
+
+		virtual ~UserData() override = default;
+
 		std::vector<unsigned char> data;
 		u8 channelId;
 	};

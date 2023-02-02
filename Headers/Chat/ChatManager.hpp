@@ -32,6 +32,12 @@ namespace Chat
 
 		virtual void Update() = 0;
 
+		void UpdateUserName();
+
+		void UpdateUserColor();
+
+		void UpdateUserIcon();
+
 		virtual void Render();
 
 		void ReceiveMessage(std::unique_ptr<ChatMessage>&& mess);

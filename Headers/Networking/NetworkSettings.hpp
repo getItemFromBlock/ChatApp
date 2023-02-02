@@ -6,7 +6,7 @@
 #define UDP_TIMEOUT std::chrono::milliseconds(3000)
 
 // Allow use of network simulator
-#define NETWORK_SIMULATOR 1
+#define NETWORK_SIMULATOR 0
 
 // Allow use of mutexes in order to make functions thread safe
 #define NETWORK_THREAD_SAFE 0

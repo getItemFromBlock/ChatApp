@@ -41,7 +41,7 @@ namespace Chat
 	{
 	public:
 		ActionData() = default;
-		ActionData(Action typeIn, u8* dataIn, u64 szIn) : type(typeIn), data(dataIn, dataIn + szIn) { }
+		ActionData(Action typeIn, const u8* dataIn, u64 szIn) : type(typeIn), data(dataIn, dataIn + szIn) { }
 
 		~ActionData() = default;
 
@@ -62,7 +62,12 @@ namespace Chat
 
 		virtual void TryConnect() = 0;
 
-		void PushAction(Action type, u8* data, u64 dataSize);
+		void PushAction(Action type, const u8* data, u64 dataSize);
+		void PushAction(ActionData&& action);
+
+		Chat::ActionData SendUserColor(Chat::User* user);
+		Chat::ActionData SendUserName(Chat::User* user);
+		Chat::ActionData SendUserIcon(Chat::User* user);
 
 		ChatNetworkState GetState() const { return state; }
 	protected:
@@ -92,6 +97,9 @@ namespace Chat
 
 		void ThreadFunc();
 	private:
+		bool ProcessUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
+		bool ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
+		bool ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures);
 	};
 
 	class ChatServerThread : public ChatNetworkThread
@@ -112,8 +120,9 @@ namespace Chat
 	private:
 		bool ProcessServerTextMessage(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
 		bool ProcessServerUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
-		bool ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
+		bool ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
 		bool ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures);
+		bool ProcessServerUserDisconnection(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
 
 		std::forward_list<u64> acceptedClients;
 	};

@@ -3,7 +3,7 @@
 namespace Chat
 {
 
-	User::User(const char* name, const u64 id, const Resources::Texture* texIn)
+	User::User(const char* name, u64 id, const Resources::Texture* texIn)
 	{
 		userName = name;
 		userID = id;

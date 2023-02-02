@@ -145,21 +145,43 @@ void App::Run()
 		}
 		if (ImGui::BeginMenu("Options"))
 		{
-			ImGui::MenuItem("User Profile", nullptr, &userSettings);
+			if (ImGui::MenuItem("User Profile", nullptr, &userSettings) && userSettings)
+			{
+				tmpUserName = selfUser->userName;
+				tmpUserColor = selfUser->userColor;
+				tmpTexture = selfUser->userTex;
+			}
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();
-
 		if (userSettings)
 		{
 			ImGui::Begin("User Settings", &userSettings, ImGuiWindowFlags_NoCollapse);
-			ImGui::InputText("User Name", &selfUser->userName);
-			ImGui::Image((ImTextureID)selfUser->userTex->GetTextureID(), ImVec2(100, 100));
+			ImGui::InputText("User Name", &tmpUserName);
+			ImGui::Image((ImTextureID)tmpTexture->GetTextureID(), ImVec2(100, 100));
 			if (ImGui::IsItemClicked())
 			{
 				fileDialog->Open();
 			}
-			ImGui::ColorEdit3("Color", &selfUser->userColor.x);
+			ImGui::ColorEdit3("Color", &tmpUserColor.x);
+			if (ImGui::Button("Apply changes"))
+			{
+				if (tmpUserName != selfUser->userName)
+				{
+					selfUser->userName = tmpUserName;
+					manager->UpdateUserName();
+				}
+				if (!(tmpUserColor == selfUser->userColor))
+				{
+					selfUser->userColor = tmpUserColor;
+					manager->UpdateUserColor();
+				}
+				if (tmpTexture != selfUser->userTex)
+				{
+					selfUser->userTex = tmpTexture;
+					manager->UpdateUserIcon();
+				}
+			}
 			ImGui::End();
 		}
 
@@ -175,7 +197,7 @@ void App::Run()
 			lastError = Resources::Texture::TryLoad(path.c_str(), tex, Maths::Vec2(16, 16), Maths::Vec2(256, 256), 0x40000);
 			if (lastError == TextureError::NONE)
 			{
-				selfUser->userTex = tex;
+				tmpTexture = tex;
 			}
 			else
 			{

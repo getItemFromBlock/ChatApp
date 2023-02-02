@@ -106,7 +106,7 @@ void Chat::ChatMessage::DrawUser(ImVec2& pos)
 	ImGui::SetCursorPos(ImVec2(pos.x - 60, pos.y));
 	ImGui::Image((ImTextureID)sender->userTex->GetTextureID(), ImVec2(50, 50));
 	ImGui::SetCursorPos(ImVec2(pos.x, pos.y));
-	ImGui::PushStyleColor(ImGuiCol_Text, sender->userColor);
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(sender->userColor.x, sender->userColor.y, sender->userColor.z, 1.0f));
 	ImGui::TextUnformatted(sender->userName.c_str());
 	ImGui::PopStyleColor();
 	ImGui::SameLine();
@@ -118,13 +118,14 @@ void Chat::ChatMessage::DrawUser(ImVec2& pos)
 
 Chat::ConnectionMessage::ConnectionMessage(bool connected, User* userIn, u64 tm, u64 id) : ChatMessage(userIn, tm, id), connect(connected)
 {
+	height = ImGui::GetTextLineHeight() + 10;
 }
 
 void Chat::ConnectionMessage::Draw()
 {
 	ImVec2 pos = ImGui::GetCursorPos();
 	ImGui::SetCursorPos(ImVec2(pos.x, pos.y));
-	ImGui::PushStyleColor(ImGuiCol_Text, sender->userColor);
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(sender->userColor.x, sender->userColor.y, sender->userColor.z, 1.0f));
 	ImGui::TextUnformatted(sender->userName.c_str());
 	ImGui::PopStyleColor();
 	ImGui::SameLine();

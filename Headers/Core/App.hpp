@@ -38,6 +38,9 @@ namespace Core
 		std::unique_ptr<Chat::ChatManager> manager;
 		std::unique_ptr<Resources::TextureManager> textures;
 		Chat::User* selfUser = nullptr;
+		std::string tmpUserName;
+		Maths::Vec3 tmpUserColor;
+		const Resources::Texture* tmpTexture = nullptr;
 		TextureError lastError = TextureError::NONE;
 		bool userSettings = false;
 	};

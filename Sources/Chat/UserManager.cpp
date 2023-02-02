@@ -23,6 +23,20 @@ User* UserManager::GetUser(u64 userID)
 	return ptr;
 }
 
+User* Chat::UserManager::GetUserWithNetID(u64 networkID)
+{
+	User* result = nullptr;
+	for (auto& u : users)
+	{
+		if (u.second->networkID == networkID)
+		{
+			result = u.second.get();
+			break;
+		}
+	}
+	return result;
+}
+
 User* UserManager::GetOrCreateUser(u64 userID)
 {
 	User* ptr;

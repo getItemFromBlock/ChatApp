@@ -261,7 +261,9 @@ namespace Networking::UDP
 		{
 			onMessageReady(std::make_unique<Messages::UserData>(mAddress, mClientId, std::move(msg), channelId));
 		}
+		maintainConnection();
 	}
+
 	void DistantClient::onMessageReady(std::unique_ptr<Messages::Base>&& msg)
 	{
 		if (isConnecting())
