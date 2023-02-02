@@ -121,7 +121,6 @@ int App::Init()
 	fileDialog->SetTitle("Image Selection");
 	fileDialog->SetTypeFilters({ ".png", ".jpg", ".jpeg", ".webp" });
 
-	//manager = std::make_unique<Chat::ChatManager>(users, textures, selfID, fileDialog.get());
 	return 0;
 }
 
@@ -225,7 +224,27 @@ void App::Run()
 			ImGui::EndPopup();
 		}
 
-		//manager->Render();
+		if (manager.get())
+		{
+			manager->Update();
+			manager->Render();
+		}
+		else
+		{
+			if (ImGui::Begin("Chat Selection"))
+			{
+				if (ImGui::Button("Start new Chat"))
+				{
+					manager = std::make_unique<Chat::ServerChatManager>(users.get(), textures.get(), selfID, fileDialog.get());
+				}
+				if (ImGui::Button("Join Chat") && !manager.get())
+				{
+					manager = std::make_unique<Chat::ClientChatManager>(users.get(), textures.get(), selfID, fileDialog.get());
+				}
+				ImGui::End();
+			}
+		}
+
 		// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// -------------------------------------------------------------------------------
 		ImGui::Render();

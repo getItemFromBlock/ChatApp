@@ -7,6 +7,16 @@
 
 using namespace Chat;
 
+void Chat::ClientChatManager::Update()
+{
+	reinterpret_cast<ChatClientThread*>(ntwThread.get())->Update(this, users, textures);
+}
+
+void Chat::ServerChatManager::Update()
+{
+	reinterpret_cast<ChatServerThread*>(ntwThread.get())->Update(this, users, textures);
+}
+
 void ChatManager::Render()
 {
 	if (setDown && lastHeight != 0)
@@ -134,7 +144,7 @@ void Chat::ChatManager::DrawPopup()
 
 Chat::ClientChatManager::ClientChatManager(UserManager* users, Resources::TextureManager* textures, u64 s, ImGui::FileBrowser* br) : ChatManager(users, textures, s, br)
 {
-	ntwThread = std::make_unique<ChatNetworkThread>(users->GetUser(selfID));
+	ntwThread = std::make_unique<ChatClientThread>(users->GetUser(selfID));
 }
 
 void Chat::ClientChatManager::SendChatMessage()
@@ -169,12 +179,10 @@ void Chat::ClientChatManager::Render()
 				Networking::Address ad;
 				if (serverAddress.empty())
 				{
-					ad = Networking::Address::Any(isIPV6 ? Networking::Address::Type::IPv6 : Networking::Address::Type::IPv4, serverPort);
+					serverAddress = "127.0.0.1";
+					isIPV6 = false;
 				}
-				else
-				{
-					ad = Networking::Address::Address(serverAddress, serverPort);
-				}
+				ad = Networking::Address::Address(serverAddress, serverPort);
 				if (ad.isValid())
 				{
 					ntwThread->SetAddress(ad);
@@ -186,9 +194,61 @@ void Chat::ClientChatManager::Render()
 	}
 	else
 	{
-		if (ImGui::Begin("Connexion", nullptr, ImGuiWindowFlags_NoCollapse))
+		if (ImGui::Begin("Join Chat", nullptr, ImGuiWindowFlags_NoCollapse))
 		{
 			ImGui::Text("Connecting to %s...", serverAddress.c_str());
+			ImGui::End();
+		}
+	}
+}
+
+Chat::ServerChatManager::ServerChatManager(UserManager* users, Resources::TextureManager* textures, u64 s, ImGui::FileBrowser* br) : ChatManager(users, textures, s, br)
+{
+	ntwThread = std::make_unique<ChatServerThread>(users->GetUser(selfID));
+}
+
+void Chat::ServerChatManager::SendChatMessage()
+{
+	u64 messID = reinterpret_cast<ChatServerThread*>(ntwThread.get())->GetMessageCounter();
+	u64 receivedTime = time(nullptr);
+	std::unique_ptr<Chat::TextMessage> mess = std::make_unique<Chat::TextMessage>(currentText, users->GetUser(selfID), receivedTime, messID);
+	ReceiveMessage(std::move(mess));
+	Networking::Serialization::Serializer sr;
+	sr.Write(receivedTime);
+	sr.Write(selfID);
+	sr.Write(messID);
+	sr.Write(currentText.size());
+	sr.Write(reinterpret_cast<u8*>(currentText.data()), currentText.size());
+	u8* tmpbuffer = new u8[sr.GetBufferSize()];
+	std::copy(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize(), tmpbuffer);
+	ntwThread->PushAction(Chat::Action::MESSAGE_TEXT, tmpbuffer, sr.GetBufferSize());
+	currentText.clear();
+}
+
+void Chat::ServerChatManager::Render()
+{
+	if (ntwThread->GetState() == ChatNetworkState::CONNECTED)
+	{
+		ChatManager::Render();
+	}
+	else
+	{
+		if (ImGui::Begin("Connexion", nullptr, ImGuiWindowFlags_NoCollapse))
+		{
+			s32 tmpPort = serverPort;
+			ImGui::InputInt("Server Port", &tmpPort);
+			serverPort = Maths::Util::iclamp(tmpPort, 0, 0xffff);
+			ImGui::Checkbox("Is IPV6", &isIPV6);
+			if (ImGui::Button("Create Chat"))
+			{
+				Networking::Address ad;
+				ad = Networking::Address::Any(isIPV6 ? Networking::Address::Type::IPv6 : Networking::Address::Type::IPv4, serverPort);
+				if (ad.isValid())
+				{
+					ntwThread->SetAddress(ad);
+					ntwThread->TryConnect();
+				}
+			}
 			ImGui::End();
 		}
 	}

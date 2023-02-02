@@ -41,11 +41,12 @@ namespace Chat
 	{
 	public:
 		ActionData() = default;
-		ActionData(Action typeIn, void* dataIn, u64 szIn) : type(typeIn), data(dataIn), dataSize(szIn) { }
+		ActionData(Action typeIn, u8* dataIn, u64 szIn) : type(typeIn), data(dataIn, dataIn + szIn) { }
+
+		~ActionData() = default;
 
 		Chat::Action type = Action::PING;
-		u64 dataSize = 0;
-		void* data = nullptr;
+		std::vector<u8> data;
 	};
 
 	class ChatNetworkThread
@@ -57,11 +58,11 @@ namespace Chat
 
 		void SetAddress(Networking::Address& address);
 
-		void Update(f32 dt);
+		void Update();
 
 		virtual void TryConnect() = 0;
 
-		void PushAction(Action type, void* data, u64 dataSize);
+		void PushAction(Action type, u8* data, u64 dataSize);
 
 		ChatNetworkState GetState() const { return state; }
 	protected:
@@ -83,11 +84,11 @@ namespace Chat
 		ChatClientThread() = delete;
 		ChatClientThread(User* selfUser);
 
-		virtual void TryConnect() override;
+		void TryConnect() override;
 
-		virtual ~ChatClientThread() override;
+		~ChatClientThread() override;
 
-		void Update(f32 dt, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
+		void Update(ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
 
 		void ThreadFunc();
 	private:
@@ -97,11 +98,15 @@ namespace Chat
 	{
 	public:
 		ChatServerThread() = delete;
-		ChatServerThread(Networking::Address& address, User* selfUser);
+		ChatServerThread(User* selfUser);
 
-		virtual ~ChatServerThread() override;
+		~ChatServerThread() override;
 
-		void Update(f32 dt, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
+		u64 GetMessageCounter();
+
+		void TryConnect() override;
+
+		void Update(ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
 
 		void ThreadFunc();
 	private:

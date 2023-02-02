@@ -750,7 +750,7 @@ namespace Maths
     inline std::string Util::GetHex(u64 number)
     {
         std::string result = std::string();
-        result.reserve(16);
+        result.resize(16);
         for (u8 i = 0; i < 16; i++)
         {
             u8 digit = (number >> (i * 4)) & 0xf;

@@ -30,6 +30,8 @@ namespace Chat
 
 		virtual void SendChatMessage() = 0;
 
+		virtual void Update() = 0;
+
 		virtual void Render();
 
 		void ReceiveMessage(std::unique_ptr<ChatMessage>&& mess);
@@ -46,6 +48,8 @@ namespace Chat
 		f32 lastHeight = 0;
 		TextureError lastError = TextureError::NONE;
 		bool setDown = false;
+		u16 serverPort = (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count()) & 0xffff;
+		bool isIPV6 = false;
 
 		void DrawPopup();
 	};
@@ -63,10 +67,28 @@ namespace Chat
 
 		void Render() override;
 
+		void Update() override;
+
 	private:
 		std::string serverAddress;
-		u16 serverPort = (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count()) & 0xffff;
-		bool isIPV6 = false;
+	};
+
+	class ServerChatManager : public ChatManager
+	{
+	public:
+		ServerChatManager(UserManager* users, Resources::TextureManager* textures, u64 s, ImGui::FileBrowser* br);
+
+		~ServerChatManager() override = default;
+
+		bool isHost() const override { return true; }
+
+		void SendChatMessage() override;
+
+		void Render() override;
+
+		void Update() override;
+
+	private:
 	};
 
 }
