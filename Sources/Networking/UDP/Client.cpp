@@ -86,6 +86,14 @@ namespace Networking::UDP
 		mPendingOperations.push_back(Operation::Disconnect(addr));
 	}
 
+	void Client::disconnectAll()
+	{
+#if NETWORK_THREAD_SAFE
+		OperationsLock lock(mOperationsLock); $
+#endif
+			mPendingOperations.push_back(Operation::DisconnectAll());
+	}
+
 	void Client::sendTo(const Address& target, std::vector<u8>&& data, const u32 channelIndex)
 	{
 		assert(target.isValid());
@@ -138,6 +146,13 @@ namespace Networking::UDP
 			{
 				if (auto client = getClient(op.mTarget))
 					client->disconnect();
+			} break;
+			case Operation::Type::DisconnectAll:
+			{
+				for (auto& client : mClients)
+				{
+					client->disconnect();
+				}
 			} break;
 			}
 		}
@@ -242,6 +257,12 @@ namespace Networking::UDP
 		MessagesLock lock(mMessagesLock);
 #endif
 		return std::move(mMessages);
+	}
+
+	bool Client::IsClientDisconnected(const Address& clientAddr)
+	{
+		DistantClient* cl = getClient(clientAddr);
+		return (!cl || cl->isDisconnected());
 	}
 
 	DistantClient* Client::getClient(const Address& clientAddr, bool create)

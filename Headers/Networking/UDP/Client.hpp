@@ -57,6 +57,7 @@ namespace Networking
 			void connect(const Address& addr);
 			// Can be called anytime from any thread ONLY IF NETWORK_THREAD_SAFE is defined in newtork settings
 			void disconnect(const Address& addr);
+			void disconnectAll();
 			// Can be called anytime from any thread ONLY IF NETWORK_THREAD_SAFE is defined in newtork settings
 			void sendTo(const Address& target, std::vector<u8>&& data, u32 channelIndex);
 			void sendTo(const Address& target, const u8* data, size_t dataSize, u32 channelIndex) { sendTo(target, std::vector<u8>(data, data + dataSize), channelIndex); }
@@ -79,6 +80,8 @@ namespace Networking
 			inline bool isNetworkInterruptionAllowed() const { return mNetworkInterruptionAllowed; }
 			inline bool isNetworkInterrupted() const { return !mInterruptedClients.empty(); }
 #endif
+
+			bool IsClientDisconnected(const Address& clientAddr);
 
 		private:
 			DistantClient* getClient(const Address& clientAddr, bool create = false);
@@ -110,12 +113,14 @@ namespace Networking
 					SendTo,
 					BroadCast,
 					Disconnect,
+					DisconnectAll,
 				};
 			public:
 				static Operation Connect(const Address& target) { return Operation(Type::Connect, target); }
 				static Operation SendTo(const Address& target, std::vector<u8>&& data, u32 channel) { return Operation(Type::SendTo, target, std::move(data), channel); }
 				static Operation BroadCast(std::vector<u8>&& data, u32 channel) { return Operation(Type::BroadCast, Address(), std::move(data), channel); }
 				static Operation Disconnect(const Address& target) { return Operation(Type::Disconnect, target); }
+				static Operation DisconnectAll() { return Operation(Type::DisconnectAll, Address()); }
 
 				Operation(Type type, const Address& target)
 					: mType(type)

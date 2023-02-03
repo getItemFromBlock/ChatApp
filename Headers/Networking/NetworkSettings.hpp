@@ -3,7 +3,7 @@
 #include <chrono>
 
 // Default UDP timeout
-#define UDP_TIMEOUT std::chrono::milliseconds(3000)
+#define UDP_TIMEOUT std::chrono::milliseconds(2000)
 
 // Allow use of network simulator
 #define NETWORK_SIMULATOR 0

@@ -9,12 +9,55 @@ using namespace Chat;
 
 void Chat::ClientChatManager::Update()
 {
-	reinterpret_cast<ChatClientThread*>(ntwThread.get())->Update(this, users, textures);
+	reinterpret_cast<ChatClientThread*>(ntwThread.get())->Update();
+}
+
+void Chat::ClientChatManager::RenderConnectionScreen()
+{
+	if (ImGui::Begin("Connexion", nullptr, ImGuiWindowFlags_NoCollapse))
+	{
+		ImGui::InputText("Server IP Address", &serverAddress);
+		s32 tmpPort = serverPort;
+		ImGui::InputInt("Server Port", &tmpPort);
+		serverPort = Maths::Util::iclamp(tmpPort, 0, 0xffff);
+		ImGui::Checkbox("Is IPV6", &isIPV6);
+		if (ImGui::Button("Connect"))
+		{
+			Networking::Address ad;
+			if (serverAddress.empty())
+			{
+				serverAddress = "127.0.0.1";
+				isIPV6 = false;
+			}
+			ad = Networking::Address::Address(serverAddress, serverPort);
+			if (ad.isValid())
+			{
+				ntwThread->SetAddress(ad);
+				ntwThread->TryConnect();
+			}
+			else
+			{
+				ImGui::OpenPopup("Address Error");
+			}
+		}
+		if (ImGui::BeginPopupModal("Address Error", nullptr, ImGuiWindowFlags_NoCollapse))
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+			ImGui::TextUnformatted("Invalid address");
+			if (ImGui::Button("Close"))
+			{
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::PopStyleColor();
+			ImGui::EndPopup();
+		}
+		ImGui::End();
+	}
 }
 
 void Chat::ServerChatManager::Update()
 {
-	reinterpret_cast<ChatServerThread*>(ntwThread.get())->Update(this, users, textures);
+	reinterpret_cast<ChatServerThread*>(ntwThread.get())->Update();
 }
 
 void Chat::ChatManager::UpdateUserName()
@@ -61,8 +104,7 @@ void ChatManager::Render()
 	}
 	if (ImGui::Begin("Send Message", nullptr, ImGuiWindowFlags_NoCollapse))
 	{
-		ImGui::InputTextMultiline("##textInput", &currentText, ImVec2(0,0), ImGuiInputTextFlags_CtrlEnterForNewLine);
-		bool valided = ImGui::IsItemDeactivatedAfterEdit();
+		bool valided = ImGui::InputTextMultiline("##textInput", &currentText, ImVec2(0,0), ImGuiInputTextFlags_CtrlEnterForNewLine | ImGuiInputTextFlags_EnterReturnsTrue);
 		if ((ImGui::Button("Send Message") || valided) && !currentText.empty())
 		{
 			SendChatMessage();
@@ -101,9 +143,9 @@ void ChatManager::Render()
 			}
 			browser->ClearSelected();
 		}
+		DrawPopup();
 		ImGui::End();
 	}
-	DrawPopup();
 }
 
 void Chat::ChatManager::ReceiveMessage(std::unique_ptr<ChatMessage>&& mess)
@@ -112,6 +154,19 @@ void Chat::ChatManager::ReceiveMessage(std::unique_ptr<ChatMessage>&& mess)
 	lastHeight = 0;
 	setDown = true;
 	messages.push_back(std::move(mess));
+}
+
+void Chat::ChatManager::RetreiveMessages(std::vector<ActionData>& outputVec, u64 first, u64 last)
+{
+	for (u64 index = first; index < messages.size() && index < last; index++)
+	{
+
+	}
+}
+
+const std::vector<std::unique_ptr<ChatMessage>>& ChatManager::GetAllMessages()
+{
+	return messages;
 }
 
 void Chat::ChatManager::DrawPopup()
@@ -159,7 +214,7 @@ void Chat::ChatManager::DrawPopup()
 
 Chat::ClientChatManager::ClientChatManager(UserManager* users, Resources::TextureManager* textures, u64 s, ImGui::FileBrowser* br) : ChatManager(users, textures, s, br)
 {
-	ntwThread = std::make_unique<ChatClientThread>(users->GetUser(selfID));
+	ntwThread = std::make_unique<ChatClientThread>(users->GetUser(selfID), this, users, textures);
 }
 
 void Chat::ClientChatManager::SendChatMessage()
@@ -174,50 +229,41 @@ void Chat::ClientChatManager::SendChatMessage()
 
 void Chat::ClientChatManager::Render()
 {
-	if (ntwThread->GetState() == ChatNetworkState::CONNECTED)
+	switch (ntwThread->GetState())
 	{
+	case ChatNetworkState::DISCONNECTED:
+		RenderConnectionScreen();
+		break;
+	case ChatNetworkState::CONNECTED:
 		ChatManager::Render();
-	}
-	else if (ntwThread->GetState() == ChatNetworkState::DISCONNECTED)
-	{
-		if (ImGui::Begin("Connexion", nullptr, ImGuiWindowFlags_NoCollapse))
-		{
-			ImGui::InputText("Server IP Address", &serverAddress);
-			s32 tmpPort = serverPort;
-			ImGui::InputInt("Server Port", &tmpPort);
-			serverPort = Maths::Util::iclamp(tmpPort, 0, 0xffff);
-			ImGui::Checkbox("Is IPV6", &isIPV6);
-			if (ImGui::Button("Connect"))
-			{
-				Networking::Address ad;
-				if (serverAddress.empty())
-				{
-					serverAddress = "127.0.0.1";
-					isIPV6 = false;
-				}
-				ad = Networking::Address::Address(serverAddress, serverPort);
-				if (ad.isValid())
-				{
-					ntwThread->SetAddress(ad);
-					ntwThread->TryConnect();
-				}
-			}
-			ImGui::End();
-		}
-	}
-	else
-	{
+		break;
+	case ChatNetworkState::WAITING_CONNECTION:
 		if (ImGui::Begin("Join Chat", nullptr, ImGuiWindowFlags_NoCollapse))
 		{
 			ImGui::Text("Connecting to %s...", serverAddress.c_str());
 			ImGui::End();
 		}
+		break;
+	case ChatNetworkState::CONNECTION_LOST:
+		if (ImGui::Begin("Disconnected", nullptr, ImGuiWindowFlags_NoCollapse))
+		{
+			ImGui::TextUnformatted("Connection error :");
+			ImGui::TextUnformatted(ntwThread->GetLastError());
+			if (ImGui::Button("Back"))
+			{
+				ntwThread->ResetState();
+			}
+			ImGui::End();
+		}
+		break;
+	default:
+		break;
 	}
 }
 
 Chat::ServerChatManager::ServerChatManager(UserManager* users, Resources::TextureManager* textures, u64 s, ImGui::FileBrowser* br) : ChatManager(users, textures, s, br)
 {
-	ntwThread = std::make_unique<ChatServerThread>(users->GetUser(selfID));
+	ntwThread = std::make_unique<ChatServerThread>(users->GetUser(selfID), this, users, textures);
 }
 
 void Chat::ServerChatManager::SendChatMessage()

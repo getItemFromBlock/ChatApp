@@ -58,3 +58,8 @@ User* UserManager::GetDefaultUser()
 {
 	return users.at(0).get();
 }
+
+const std::unordered_map<u64, std::unique_ptr<Chat::User>>& Chat::UserManager::GetAllUsers()
+{
+	return users;
+}

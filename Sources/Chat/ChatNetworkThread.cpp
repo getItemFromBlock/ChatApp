@@ -7,7 +7,8 @@
 #include "Networking/Messages.hpp"
 #include "Chat/ChatManager.hpp"
 
-Chat::ChatNetworkThread::ChatNetworkThread(User* selfUser) : self(selfUser)
+Chat::ChatNetworkThread::ChatNetworkThread(User* selfUser, ChatManager* managerIn, UserManager* usersIn, Resources::TextureManager* texturesIn) :
+	self(selfUser), manager(managerIn), users(usersIn), textures(texturesIn)
 {
 	client.registerChannel<Networking::UDP::Protocols::ReliableOrdered>();
 }
@@ -43,7 +44,8 @@ void Chat::ChatNetworkThread::PushAction(ActionData&& action)
 	actionQueue.push_back(std::move(action));
 }
 
-Chat::ChatClientThread::ChatClientThread(User* selfUser) : ChatNetworkThread(selfUser)
+Chat::ChatClientThread::ChatClientThread(User* selfUser, ChatManager* managerIn, UserManager* usersIn, Resources::TextureManager* texturesIn) :
+	ChatNetworkThread(selfUser, managerIn, usersIn, texturesIn)
 {
 	if (!client.init(0))
 	{
@@ -190,7 +192,7 @@ bool ProcessTextMessage(Networking::Serialization::Deserializer& dr, Chat::UserM
 	return true;
 }
 
-void Chat::ChatClientThread::Update(ChatManager* manager, UserManager* users, Resources::TextureManager* textures)
+void Chat::ChatClientThread::Update()
 {
 	if (!signal.Load())
 	{
@@ -210,7 +212,7 @@ void Chat::ChatClientThread::Update(ChatManager* manager, UserManager* users, Re
 				{
 					continue;
 				}
-				mess = std::make_unique<Chat::ConnectionMessage>(true, users->GetUser(userID), mTime, messID);
+				mess = std::make_unique<Chat::ConnectionMessage>(true, users->GetOrCreateUser(userID), mTime, messID);
 				manager->ReceiveMessage(std::move(mess));
 				break;
 			case Action::USER_DISCONNECT:
@@ -218,7 +220,7 @@ void Chat::ChatClientThread::Update(ChatManager* manager, UserManager* users, Re
 				{
 					continue;
 				}
-				mess = std::make_unique<Chat::ConnectionMessage>(false, users->GetUser(userID), mTime, messID);
+				mess = std::make_unique<Chat::ConnectionMessage>(false, users->GetOrCreateUser(userID), mTime, messID);
 				manager->ReceiveMessage(std::move(mess));
 				break;
 			case Action::MESSAGE_TEXT:
@@ -278,11 +280,12 @@ void Chat::ChatClientThread::ThreadFunc()
 			else if (connect.Load() && state == ChatNetworkState::DISCONNECTED)
 			{
 				client.connect(address);
+				connect.Store(false);
 				state = ChatNetworkState::WAITING_CONNECTION;
 			}
 			actions.clear();
 			client.receive();
-			if (state != ChatNetworkState::DISCONNECTED) client.processSend();
+			if (state == ChatNetworkState::CONNECTED || state == ChatNetworkState::WAITING_CONNECTION) client.processSend();
 			auto v = client.poll();
 			for (auto& m : v)
 			{
@@ -295,17 +298,30 @@ void Chat::ChatClientThread::ThreadFunc()
 					if (state == ChatNetworkState::WAITING_CONNECTION)
 					{
 						auto ud = m->as<Networking::Messages::Connection>();
-						if (ud->result == Networking::Messages::Connection::Result::Success)
+						switch (ud->result)
 						{
+						case Networking::Messages::Connection::Result::Success:
 							state = ChatNetworkState::CONNECTED;
 							response.push_back(SendUserName(self));
 							response.push_back(SendUserColor(self));
 							response.push_back(SendUserIcon(self));
-						}
-						else
-						{
-							std::cout << "Error, connection refused" << std::endl;
-							state = ChatNetworkState::DISCONNECTED;
+							break;
+						case Networking::Messages::Connection::Result::Failed:
+							lastError = "Could not connect to server";
+							state = ChatNetworkState::CONNECTION_LOST;
+							break;
+						case Networking::Messages::Connection::Result::Refused:
+							lastError = "Connection refused";
+							state = ChatNetworkState::CONNECTION_LOST;
+							break;
+						case Networking::Messages::Connection::Result::TimedOut:
+							lastError = "Connection timed out";
+							state = ChatNetworkState::CONNECTION_LOST;
+							break;
+						default:
+							lastError = "Unknown error";
+							state = ChatNetworkState::CONNECTION_LOST;
+							break;
 						}
 					}
 				}
@@ -337,8 +353,15 @@ void Chat::ChatClientThread::ThreadFunc()
 				}
 				else if (m->is<Networking::Messages::Disconnection>())
 				{
-					std::cout << "Disconnected" << std::endl;
-					state = ChatNetworkState::DISCONNECTED;
+					if (m->as<Networking::Messages::Disconnection>()->reason == Networking::Messages::Disconnection::Reason::Disconnected)
+					{
+						lastError = "Disconnected from server";
+					}
+					else
+					{
+						lastError = "Connection lost with server";
+					}
+					state = ChatNetworkState::CONNECTION_LOST;
 				}
 			}
 			Networking::Serialization::Serializer sr;
@@ -364,7 +387,8 @@ void Chat::ChatClientThread::ThreadFunc()
 	}
 }
 
-Chat::ChatServerThread::ChatServerThread(User* selfUser) : ChatNetworkThread(selfUser)
+Chat::ChatServerThread::ChatServerThread(User* selfUser, ChatManager* managerIn, UserManager* usersIn, Resources::TextureManager* texturesIn) :
+	ChatNetworkThread(selfUser, managerIn, usersIn, texturesIn)
 {
 	t = std::thread(&ChatServerThread::ThreadFunc, this);
 }
@@ -407,17 +431,8 @@ bool Chat::ChatServerThread::ProcessServerTextMessage(Networking::Serialization:
 	if (!dr.Read(reinterpret_cast<u8*>(tmp.data()), size)) return false;
 	u64 receivedTime = time(nullptr);
 	std::unique_ptr<Chat::TextMessage> mess = std::make_unique<Chat::TextMessage>(tmp, users->GetOrCreateUser(userID), receivedTime, messID);
+	actionQueue.push_back(std::move(mess->Serialize()));
 	manager->ReceiveMessage(std::move(mess));
-	Networking::Serialization::Serializer sr;
-	sr.Write(receivedTime);
-	sr.Write(userID);
-	sr.Write(messID);
-	sr.Write(size);
-	sr.Write(reinterpret_cast<u8*>(tmp.data()), size);
-	Chat::ActionData action;
-	action.type = Chat::Action::MESSAGE_TEXT;
-	action.data = std::vector(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize());
-	actionQueue.push_back(std::move(action));
 	return true;
 }
 
@@ -554,20 +569,43 @@ bool Chat::ChatServerThread::ProcessServerUserDisconnection(Networking::Serializ
 	u64 messID = GetMessageCounter();
 	u64 receivedTime = time(nullptr);
 	std::unique_ptr<Chat::ConnectionMessage> mess = std::make_unique<Chat::ConnectionMessage>(false, user, receivedTime, messID);
+	actionQueue.push_back(std::move(mess->Serialize()));
 	manager->ReceiveMessage(std::move(mess));
-
-	Networking::Serialization::Serializer sr2;
-	sr2.Write(receivedTime);
-	sr2.Write(user->userID);
-	sr2.Write(messID);
-	Chat::ActionData action;
-	action.type = Chat::Action::USER_DISCONNECT;
-	action.data = std::vector(sr2.GetBuffer(), sr2.GetBuffer() + sr2.GetBufferSize());
-	actionQueue.push_back(std::move(action));
 	return true;
 }
 
-void Chat::ChatServerThread::Update(ChatManager* manager, UserManager* users, Resources::TextureManager* textures)
+bool Chat::ChatServerThread::ProcessServerUserConnection(const Networking::Address& clientIn, Chat::UserManager* users, Chat::ChatManager* manager)
+{
+	std::vector<ActionData> tmpActions;
+	Networking::Serialization::Serializer sr;
+	for (auto& u : users->GetAllUsers())
+	{
+		if (u.first == 0) continue; // no need to send the default users' data
+		tmpActions.push_back(SendUserName(u.second.get()));
+		tmpActions.push_back(SendUserColor(u.second.get()));
+		tmpActions.push_back(SendUserIcon(u.second.get()));
+	}
+	for (auto& m : manager->GetAllMessages())
+	{
+		tmpActions.push_back(m->Serialize());
+	}
+	for (size_t i = 0; i < tmpActions.size(); i++)
+	{
+		sr.Write(static_cast<u8>(tmpActions[i].type));
+		sr.Write(tmpActions[i].data.size());
+		if (tmpActions[i].data.size() != 0)
+		{
+			sr.Write(tmpActions[i].data.data(), tmpActions[i].data.size());
+		}
+	}
+	if (sr.GetBufferSize() > 0)
+	{
+		client.sendTo(clientIn, sr.GetBuffer(), sr.GetBufferSize(), 0);
+	}
+	return true;
+}
+
+void Chat::ChatServerThread::Update()
 {
 	if (!signal.Load())
 	{
@@ -637,11 +675,8 @@ void Chat::ChatServerThread::ThreadFunc()
 				if (m->is<Networking::Messages::IncomingConnection>())
 				{
 					client.connect(m->emitter());
-					Networking::Serialization::Serializer sr;
-					sr.Write(time(nullptr));
-					sr.Write(time(nullptr));
-					sr.Write(time(nullptr));
-					acceptedClients.push_front(m->emmiterId());
+					acceptedClients.push_front(m->emitterId());
+					ProcessServerUserConnection(m->emitter(), users, manager);
 				}
 				else if (m->is<Networking::Messages::Connection>())
 				{
@@ -666,7 +701,7 @@ void Chat::ChatServerThread::ThreadFunc()
 							{
 								action.data.resize(tmpSize + 8);
 								Networking::Serialization::Serializer tmpSR;
-								tmpSR.Write(m->emmiterId());
+								tmpSR.Write(m->emitterId());
 								std::copy(tmpSR.GetBuffer(), tmpSR.GetBuffer() + 8, action.data.data());
 								if (!dr.Read(action.data.data() + 8, tmpSize))
 								{
@@ -693,10 +728,10 @@ void Chat::ChatServerThread::ThreadFunc()
 					ActionData action;
 					action.type = Action::USER_DISCONNECT;
 					Networking::Serialization::Serializer sr;
-					sr.Write(m->emmiterId());
+					sr.Write(m->emitterId());
 					action.data.resize(sr.GetBufferSize());
 					std::copy(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize(), action.data.data());
-					response.push_back(std::move(action));
+					actions.push_back(std::move(action));
 				}
 			}
 			Networking::Serialization::Serializer sr2;
@@ -709,14 +744,14 @@ void Chat::ChatServerThread::ThreadFunc()
 					sr2.Write(response[i].data.data(), response[i].data.size());
 				}
 			}
-			if (sr2.GetBufferSize() > 0) client.sendTo(address, sr2.GetBuffer(), sr2.GetBufferSize(), 0);
+			if (sr2.GetBufferSize() > 0) client.broadCast(sr2.GetBuffer(), sr2.GetBufferSize(), 0);
 			signal.Store(false);
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	}
 	if (address.isValid())
 	{
-		client.disconnect(address);
+		client.disconnectAll();
 		client.processSend();
 		client.release();
 	}

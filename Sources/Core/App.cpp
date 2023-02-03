@@ -169,17 +169,17 @@ void App::Run()
 				if (tmpUserName != selfUser->userName)
 				{
 					selfUser->userName = tmpUserName;
-					manager->UpdateUserName();
+					if (manager) manager->UpdateUserName();
 				}
 				if (!(tmpUserColor == selfUser->userColor))
 				{
 					selfUser->userColor = tmpUserColor;
-					manager->UpdateUserColor();
+					if (manager) manager->UpdateUserColor();
 				}
 				if (tmpTexture != selfUser->userTex)
 				{
 					selfUser->userTex = tmpTexture;
-					manager->UpdateUserIcon();
+					if (manager) manager->UpdateUserIcon();
 				}
 			}
 			ImGui::End();

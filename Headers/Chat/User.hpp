@@ -19,7 +19,7 @@ namespace Chat
 
 		std::string userName;
 		u64 userID = 0;
-		u64 networkID = 0;
+		u64 networkID = -1;
 		Maths::Vec3 userColor = Maths::Vec3(1.0f);
 		const Resources::Texture* userTex;
 	private:

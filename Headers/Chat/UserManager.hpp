@@ -24,6 +24,8 @@ namespace Chat
 
 		User* GetDefaultUser();
 
+		const std::unordered_map<u64, std::unique_ptr<Chat::User>>& GetAllUsers();
+
 	private:
 		std::unordered_map<u64, std::unique_ptr<Chat::User>> users;
 		Resources::TextureManager& textures;

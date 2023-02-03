@@ -42,6 +42,10 @@ namespace Chat
 
 		void ReceiveMessage(std::unique_ptr<ChatMessage>&& mess);
 
+		void RetreiveMessages(std::vector<ActionData>& outputVec, u64 first = 0, u64 last = -1);
+
+		const std::vector<std::unique_ptr<ChatMessage>>& GetAllMessages();
+
 	protected:
 		UserManager* users;
 		Resources::TextureManager* textures;
@@ -77,6 +81,8 @@ namespace Chat
 
 	private:
 		std::string serverAddress;
+
+		void RenderConnectionScreen();
 	};
 
 	class ServerChatManager : public ChatManager

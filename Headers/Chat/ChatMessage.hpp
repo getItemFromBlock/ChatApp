@@ -6,6 +6,7 @@
 #include "Core/Types.hpp"
 #include "Resources/Texture.hpp"
 #include "Chat/User.hpp"
+#include "ActionData.hpp"
 
 namespace Chat
 {
@@ -19,6 +20,8 @@ namespace Chat
 
 		virtual void Draw() = 0;
 
+		virtual Chat::ActionData Serialize() = 0;
+
 		User* GetSender() { return sender; }
 		f32 GetHeight() { return height; }
 		u64 GetID() { return messageID; }
@@ -27,6 +30,7 @@ namespace Chat
 
 		User* sender = nullptr;
 		u64 messageID = 0;
+		u64 unixTime = 0;
 		char messageSTR[17] = "0000000000000000";
 		std::string timestamp = "01/01/1970";
 		f32 height = 0.0f;
@@ -40,6 +44,7 @@ namespace Chat
 
 		virtual ~TextMessage() override = default;
 		virtual void Draw() override;
+		Chat::ActionData Serialize() override;
 
 		static float MaxWidth;
 	protected:
@@ -54,6 +59,7 @@ namespace Chat
 
 		virtual ~ImageMessage() override = default;
 		virtual void Draw() override;
+		Chat::ActionData Serialize() override;
 
 	protected:
 		Resources::Texture* tex;
@@ -68,6 +74,7 @@ namespace Chat
 
 		virtual ~ConnectionMessage() override = default;
 		virtual void Draw() override;
+		Chat::ActionData Serialize() override;
 
 	protected:
 		bool connect;

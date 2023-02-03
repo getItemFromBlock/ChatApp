@@ -287,6 +287,9 @@
     <ClInclude Include="Headers\Resources\TextureManager.hpp">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="Headers\Chat\ActionData.hpp">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Headers\Maths\Maths.inl">

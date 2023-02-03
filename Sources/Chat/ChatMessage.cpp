@@ -2,6 +2,8 @@
 
 #include <time.h>
 
+#include "Networking/Serialization/Serializer.hpp"
+
 using namespace Chat;
 
 float TextMessage::MaxWidth = 300.0f;
@@ -58,6 +60,20 @@ void TextMessage::Draw()
 	ImGui::SetCursorPosX(pos.x);
 }
 
+Chat::ActionData Chat::TextMessage::Serialize()
+{
+	Networking::Serialization::Serializer sr;
+	sr.Write(unixTime);
+	sr.Write(sender->userID);
+	sr.Write(messageID);
+	sr.Write(message.size());
+	sr.Write(reinterpret_cast<u8*>(message.data()), message.size());
+	Chat::ActionData action;
+	action.type = Chat::Action::MESSAGE_TEXT;
+	action.data = std::vector(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize());
+	return action;
+}
+
 Chat::ImageMessage::ImageMessage(Resources::Texture* img, User* userIn, u64 tm, u64 id) : ChatMessage(userIn, tm, id), tex(img)
 {
 	height = 210 + ImGui::GetTextLineHeightWithSpacing();
@@ -86,9 +102,16 @@ void Chat::ImageMessage::Draw()
 	ImGui::SetCursorPosX(pos.x);
 }
 
+Chat::ActionData Chat::ImageMessage::Serialize()
+{
+	// TODO
+	return Chat::ActionData();
+}
+
 Chat::ChatMessage::ChatMessage(User* s, u64 timeIn, u64 id) : sender(s), messageID(id)
 {
 	Maths::Util::GetHex(messageSTR, messageID);
+	unixTime = timeIn;
 	time_t rawtime = timeIn;
 	tm timeinfo;
 	char buffer[80];
@@ -135,4 +158,16 @@ void Chat::ConnectionMessage::Draw()
 	ImGui::TextUnformatted(timestamp.c_str());
 	ImGui::PopStyleColor();
 	ImGui::SetCursorPosX(pos.x);
+}
+
+Chat::ActionData Chat::ConnectionMessage::Serialize()
+{
+	Networking::Serialization::Serializer sr2;
+	sr2.Write(unixTime);
+	sr2.Write(sender->userID);
+	sr2.Write(messageID);
+	Chat::ActionData action;
+	action.type = connect ? Chat::Action::USER_CONNECT : Chat::Action::USER_DISCONNECT;
+	action.data = std::vector(sr2.GetBuffer(), sr2.GetBuffer() + sr2.GetBufferSize());
+	return action;
 }

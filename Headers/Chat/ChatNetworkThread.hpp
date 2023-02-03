@@ -13,46 +13,24 @@
 #include "Resources/TextureManager.hpp"
 #include "Networking/Serialization/Serializer.hpp"
 #include "Networking/Serialization/Deserializer.hpp"
+#include "ActionData.hpp"
 
 namespace Chat
 {
 	class ChatManager;
-
-	enum class Action : u8
-	{
-		PING,
-		USER_CONNECT,
-		USER_DISCONNECT,
-		MESSAGE_TEXT,
-		MESSAGE_IMAGE,
-		USER_UPDATE_NAME,
-		USER_UPDATE_COLOR,
-		USER_UPDATE_ICON,
-	};
 
 	enum class ChatNetworkState : u8
 	{
 		DISCONNECTED,
 		CONNECTED,
 		WAITING_CONNECTION,
-	};
-
-	class ActionData
-	{
-	public:
-		ActionData() = default;
-		ActionData(Action typeIn, const u8* dataIn, u64 szIn) : type(typeIn), data(dataIn, dataIn + szIn) { }
-
-		~ActionData() = default;
-
-		Chat::Action type = Action::PING;
-		std::vector<u8> data;
+		CONNECTION_LOST,
 	};
 
 	class ChatNetworkThread
 	{
 	public:
-		ChatNetworkThread(User* selfUser);
+		ChatNetworkThread(User* selfUser, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
 
 		virtual ~ChatNetworkThread();
 
@@ -70,6 +48,8 @@ namespace Chat
 		Chat::ActionData SendUserIcon(Chat::User* user);
 
 		ChatNetworkState GetState() const { return state; }
+		void ResetState() { state = ChatNetworkState::DISCONNECTED; }
+		const char* GetLastError() { return lastError; }
 	protected:
 		std::thread t;
 		Networking::Address address;
@@ -81,19 +61,23 @@ namespace Chat
 		Core::Signal shouldQuit = Core::Signal(false);
 		User* self = nullptr;
 		ChatNetworkState state = ChatNetworkState::DISCONNECTED;
+		const char* lastError = "Unknown error";
+		ChatManager* manager = nullptr;
+		UserManager* users = nullptr;
+		Resources::TextureManager* textures = nullptr;
 	};
 
 	class ChatClientThread : public ChatNetworkThread
 	{
 	public:
 		ChatClientThread() = delete;
-		ChatClientThread(User* selfUser);
+		ChatClientThread(User* selfUser, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
 
 		void TryConnect() override;
 
 		~ChatClientThread() override;
 
-		void Update(ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
+		void Update();
 
 		void ThreadFunc();
 	private:
@@ -106,7 +90,7 @@ namespace Chat
 	{
 	public:
 		ChatServerThread() = delete;
-		ChatServerThread(User* selfUser);
+		ChatServerThread(User* selfUser, ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
 
 		~ChatServerThread() override;
 
@@ -114,7 +98,7 @@ namespace Chat
 
 		void TryConnect() override;
 
-		void Update(ChatManager* manager, UserManager* users, Resources::TextureManager* textures);
+		void Update();
 
 		void ThreadFunc();
 	private:
@@ -123,6 +107,7 @@ namespace Chat
 		bool ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
 		bool ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures);
 		bool ProcessServerUserDisconnection(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
+		bool ProcessServerUserConnection(const Networking::Address& clientIn, Chat::UserManager* users, Chat::ChatManager* manager);
 
 		std::forward_list<u64> acceptedClients;
 	};

@@ -198,6 +198,7 @@
     <ClCompile Include="Sources\Resources\TextureManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Headers\Chat\ActionData.hpp" />
     <ClInclude Include="Headers\Chat\ChatManager.hpp" />
     <ClInclude Include="Headers\Chat\ChatMessage.hpp" />
     <ClInclude Include="Headers\Chat\ChatNetworkThread.hpp" />

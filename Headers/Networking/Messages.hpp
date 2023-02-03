@@ -20,7 +20,7 @@ namespace Networking::Messages
 		const M* as() const { return static_cast<const M*>(this); }
 
 		const Address& emitter() const { return mFrom; }
-		u64 emmiterId() const { return mFromID; }
+		u64 emitterId() const { return mFromID; }
 
 		Base(const Base&) = delete;
 		Base& operator=(const Base&) = delete;
