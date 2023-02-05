@@ -18,7 +18,11 @@ namespace Resources
 
 		Texture* GetOrCreateTexture(std::string key);
 
-		Texture* GetDefaultTexture();
+		Texture* GetDefaultUserTexture();
+
+		Texture* GetDefaultImage();
+
+		Texture* GetLoadingImage();
 
 		void EmplaceTexture(std::string& key, std::unique_ptr<Texture>&& tex);
 

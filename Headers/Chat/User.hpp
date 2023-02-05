@@ -6,6 +6,7 @@
 
 #include "Resources/Texture.hpp"
 #include "Core/Types.hpp"
+#include "Networking/Address.hpp"
 
 namespace Chat
 {
@@ -20,7 +21,10 @@ namespace Chat
 		std::string userName;
 		u64 userID = 0;
 		u64 networkID = -1;
+		s64 lastActivity = 0;
+		bool isConnected = true;
 		Maths::Vec3 userColor = Maths::Vec3(1.0f);
+		Networking::Address clientAddress;
 		const Resources::Texture* userTex;
 	private:
 	};

@@ -73,6 +73,8 @@ namespace Networking
 			// Can be called anytime from any thread ONLY IF NETWORK_THREAD_SAFE is defined in newtork settings
 			std::vector<std::unique_ptr<Messages::Base>> poll();
 
+			const Address& GetClientAddress(u64 clientIndex);
+
 #if NETWORK_INTERRUPTION
 			inline void enableNetworkInterruption() { setNetworkInterruptionEnabled(true); }
 			inline void disableNetworkInterruption() { setNetworkInterruptionEnabled(false); }

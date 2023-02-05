@@ -8,7 +8,7 @@ using namespace Chat;
 
 float TextMessage::MaxWidth = 300.0f;
 
-Chat::TextMessage::TextMessage(std::string& textIn, User* userIn, u64 tm, u64 id) : ChatMessage(userIn, tm, id)
+Chat::TextMessage::TextMessage(std::string& textIn, User* userIn, s64 tm, u64 id) : ChatMessage(userIn, tm, id)
 {
 	std::vector<std::string> text;
 	height = ImGui::GetTextLineHeight() + 10;
@@ -74,7 +74,7 @@ Chat::ActionData Chat::TextMessage::Serialize()
 	return action;
 }
 
-Chat::ImageMessage::ImageMessage(Resources::Texture* img, User* userIn, u64 tm, u64 id) : ChatMessage(userIn, tm, id), tex(img)
+Chat::ImageMessage::ImageMessage(Resources::Texture* img, User* userIn, s64 tm, u64 id) : ChatMessage(userIn, tm, id), tex(img)
 {
 	height = 210 + ImGui::GetTextLineHeightWithSpacing();
 	width = tex->GetTextureWidth() * 200.0f / tex->GetTextureHeight();
@@ -108,16 +108,15 @@ Chat::ActionData Chat::ImageMessage::Serialize()
 	return Chat::ActionData();
 }
 
-Chat::ChatMessage::ChatMessage(User* s, u64 timeIn, u64 id) : sender(s), messageID(id)
+Chat::ChatMessage::ChatMessage(User* s, s64 timeIn, u64 id) : sender(s), messageID(id)
 {
 	Maths::Util::GetHex(messageSTR, messageID);
 	unixTime = timeIn;
-	time_t rawtime = timeIn;
 	tm timeinfo;
 	char buffer[80];
 
-	time(&rawtime);
-	if (!localtime_s(&timeinfo, &rawtime))
+	time(&unixTime);
+	if (!localtime_s(&timeinfo, &unixTime))
 	{
 		strftime(buffer, sizeof(buffer), "%d/%m/%Y %H:%M:%S", &timeinfo);
 		timestamp = buffer;
@@ -139,7 +138,7 @@ void Chat::ChatMessage::DrawUser(ImVec2& pos)
 	ImGui::SetCursorPosX(pos.x);
 }
 
-Chat::ConnectionMessage::ConnectionMessage(bool connected, User* userIn, u64 tm, u64 id) : ChatMessage(userIn, tm, id), connect(connected)
+Chat::ConnectionMessage::ConnectionMessage(bool connected, User* userIn, s64 tm, u64 id) : ChatMessage(userIn, tm, id), connect(connected)
 {
 	height = ImGui::GetTextLineHeight() + 10;
 }

@@ -17,6 +17,7 @@ namespace Chat
 		USER_UPDATE_NAME,
 		USER_UPDATE_COLOR,
 		USER_UPDATE_ICON,
+		FILE_DATA,
 	};
 
 	class ActionData

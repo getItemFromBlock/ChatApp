@@ -22,6 +22,10 @@ Chat::ChatNetworkThread::~ChatNetworkThread()
 void Chat::ChatNetworkThread::Update()
 {
 	actions.clear();
+	if (files.HasPendingFiles())
+	{
+		actionQueue.push_back(std::move(files.GetNextFilePart()));
+	}
 	for (size_t i = 0; i < actionQueue.size(); i++)
 	{
 		actions.push_back(std::move(actionQueue[i]));
@@ -64,7 +68,7 @@ Chat::ChatClientThread::~ChatClientThread()
 {
 }
 
-bool Chat::ChatClientThread::ProcessUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users)
+bool Chat::ChatClientThread::ProcessUserNameUpdate(Networking::Serialization::Deserializer& dr)
 {
 	Chat::User* user;
 	u64 userID;
@@ -94,7 +98,7 @@ Chat::ActionData Chat::ChatNetworkThread::SendUserName(Chat::User* user)
 	return data;
 }
 
-bool Chat::ChatClientThread::ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users)
+bool Chat::ChatClientThread::ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr)
 {
 	Chat::User* user;
 	u64 userID;
@@ -120,7 +124,7 @@ Chat::ActionData Chat::ChatNetworkThread::SendUserColor(Chat::User* user)
 	return data;
 }
 
-bool Chat::ChatClientThread::ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures)
+bool Chat::ChatClientThread::ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr)
 {
 	Chat::User* user;
 	u64 userID;
@@ -134,24 +138,10 @@ bool Chat::ChatClientThread::ProcessUserIconUpdate(Networking::Serialization::De
 	if (!dr.Read(nameSize)) return false;
 	texPath.resize(nameSize);
 	if (!dr.Read(reinterpret_cast<u8*>(texPath.data()), nameSize)) return false;
-	std::string texExt;
-	u64 extSize;
-	if (!dr.Read(extSize)) return false;
-	texExt.resize(extSize);
-	if (!dr.Read(reinterpret_cast<u8*>(texExt.data()), extSize)) return false;
-	texPath = Maths::Util::GetHex(userID) + texPath;
+	if (!texPath.compare(0, textures->GetDefaultUserTexture()->GetPath().size(), textures->GetDefaultUserTexture()->GetPath())) return false;
 	Resources::Texture* tex = textures->GetOrCreateTexture(texPath);
-	Maths::IVec2 resolution;
-	if (!dr.Read(resolution.x) || !dr.Read(resolution.y) || resolution.x < 16 || resolution.y < 16 || resolution.x > 256 || resolution.y > 16) return false;
-	u64 texDataSize;
-	if (!dr.Read(texDataSize) || texDataSize > 0x40000) return false;
-	u8* data = new u8[texDataSize];
-	if (!dr.Read(data, texDataSize))
-	{
-		delete[] data;
-		return false;
-	}
-	if (tex->LoadFromMemory(texDataSize, data, texExt, texPath, resolution) != TextureError::NONE) return false;
+	if (!tex->PreLoad(dr, texPath)) return false;
+	user->userTex = tex;
 	return true;
 }
 
@@ -160,20 +150,14 @@ Chat::ActionData Chat::ChatNetworkThread::SendUserIcon(Chat::User* user)
 	Chat::ActionData data;
 	Networking::Serialization::Serializer sr;
 	sr.Write(user->userID);
-	sr.Write(user->userTex->GetPath().size());
-	sr.Write(reinterpret_cast<const u8*>(user->userTex->GetPath().c_str()), user->userTex->GetPath().size());
-	sr.Write(user->userTex->GetFileType().size());
-	sr.Write(reinterpret_cast<const u8*>(user->userTex->GetFileType().c_str()), user->userTex->GetFileType().size());
-	sr.Write(user->userTex->GetTextureWidth());
-	sr.Write(user->userTex->GetTextureHeight());
-	sr.Write(user->userTex->GetFileDataSize());
-	sr.Write(user->userTex->GetFileData(), user->userTex->GetFileDataSize());
+	user->userTex->SerializeFile(sr);
 	data.type = Chat::Action::USER_UPDATE_ICON;
 	data.data = std::vector(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize());
+	files.AddFileToBroadCast(user->userTex);
 	return data;
 }
 
-bool ProcessTextMessage(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager)
+bool Chat::ChatClientThread::ProcessTextMessage(Networking::Serialization::Deserializer& dr)
 {
 	u64 userID;
 	u64 messID;
@@ -189,6 +173,21 @@ bool ProcessTextMessage(Networking::Serialization::Deserializer& dr, Chat::UserM
 	if (!dr.Read(reinterpret_cast<u8*>(tmp.data()), size)) return false;
 	std::unique_ptr<Chat::TextMessage> mess = std::make_unique<Chat::TextMessage>(tmp, users->GetOrCreateUser(userID), mTime, messID);
 	manager->ReceiveMessage(std::move(mess));
+	return true;
+}
+
+bool Chat::ChatClientThread::ProcessFilePart(Networking::Serialization::Deserializer& dr)
+{
+	u64 strSize;
+	std::string filePath;
+	if (!dr.Read(strSize))
+	{
+		return false;
+	}
+	filePath.resize(strSize);
+	if (!dr.Read(reinterpret_cast<u8*>(filePath.data()), strSize)) return false;
+	Resources::Texture* tex = textures->GetOrCreateTexture(filePath);
+	if (tex->IsLoaded() || !tex->AcceptPacket(dr)) return false;
 	return true;
 }
 
@@ -224,19 +223,22 @@ void Chat::ChatClientThread::Update()
 				manager->ReceiveMessage(std::move(mess));
 				break;
 			case Action::MESSAGE_TEXT:
-				ProcessTextMessage(dr, users, manager);
+				ProcessTextMessage(dr);
 				break;
 			case Action::MESSAGE_IMAGE:
 				// TODO
 				break;
 			case Action::USER_UPDATE_NAME:
-				ProcessUserNameUpdate(dr, users);
+				ProcessUserNameUpdate(dr);
 				break;
 			case Action::USER_UPDATE_COLOR:
-				ProcessUserColorUpdate(dr, users);
+				ProcessUserColorUpdate(dr);
 				break;
 			case Action::USER_UPDATE_ICON:
-				ProcessUserIconUpdate(dr, users, textures);
+				ProcessUserIconUpdate(dr);
+				break;
+			case Action::FILE_DATA:
+				ProcessFilePart(dr);
 				break;
 			default:
 				std::cout << "Warning, Invalid action type" << std::endl;
@@ -416,7 +418,7 @@ void Chat::ChatServerThread::TryConnect()
 	}
 }
 
-bool Chat::ChatServerThread::ProcessServerTextMessage(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager)
+bool Chat::ChatServerThread::ProcessServerTextMessage(Networking::Serialization::Deserializer& dr)
 {
 	u64 userID;
 	u64 messID = GetMessageCounter();
@@ -429,14 +431,20 @@ bool Chat::ChatServerThread::ProcessServerTextMessage(Networking::Serialization:
 	if (!dr.Read(size)) return false;
 	tmp.resize(size);
 	if (!dr.Read(reinterpret_cast<u8*>(tmp.data()), size)) return false;
-	u64 receivedTime = time(nullptr);
-	std::unique_ptr<Chat::TextMessage> mess = std::make_unique<Chat::TextMessage>(tmp, users->GetOrCreateUser(userID), receivedTime, messID);
+	s64 receivedTime = time(nullptr);
+	User* user = users->GetOrCreateUser(userID);
+	if (receivedTime > user->lastActivity)
+	{
+		user->isConnected = true;
+		user->lastActivity = receivedTime;
+	}
+	std::unique_ptr<Chat::TextMessage> mess = std::make_unique<Chat::TextMessage>(tmp, user, receivedTime, messID);
 	actionQueue.push_back(std::move(mess->Serialize()));
 	manager->ReceiveMessage(std::move(mess));
 	return true;
 }
 
-bool Chat::ChatServerThread::ProcessServerUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users)
+bool Chat::ChatServerThread::ProcessServerUserColorUpdate(Networking::Serialization::Deserializer& dr)
 {
 	Chat::User* user;
 	u64 userID;
@@ -458,7 +466,7 @@ bool Chat::ChatServerThread::ProcessServerUserColorUpdate(Networking::Serializat
 	return true;
 }
 
-bool Chat::ChatServerThread::ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager)
+bool Chat::ChatServerThread::ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr)
 {
 	u64 networkID;
 	Chat::User* user;
@@ -484,8 +492,14 @@ bool Chat::ChatServerThread::ProcessServerUserNameUpdate(Networking::Serializati
 		if (*t == networkID)
 		{
 			user->networkID = networkID;
+			user->clientAddress = client.GetClientAddress(networkID);
 			u64 messID = GetMessageCounter();
-			u64 receivedTime = time(nullptr);
+			s64 receivedTime = time(nullptr);
+			if (receivedTime > user->lastActivity)
+			{
+				user->isConnected = true;
+				user->lastActivity = receivedTime;
+			}
 			std::unique_ptr<Chat::ConnectionMessage> mess = std::make_unique<Chat::ConnectionMessage>(true, users->GetOrCreateUser(userID), receivedTime, messID);
 			manager->ReceiveMessage(std::move(mess));
 
@@ -511,7 +525,7 @@ bool Chat::ChatServerThread::ProcessServerUserNameUpdate(Networking::Serializati
 	return true;
 }
 
-bool Chat::ChatServerThread::ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures)
+bool Chat::ChatServerThread::ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr)
 {
 	Chat::User* user;
 	u64 userID;
@@ -525,56 +539,41 @@ bool Chat::ChatServerThread::ProcessServerUserIconUpdate(Networking::Serializati
 	if (!dr.Read(nameSize)) return false;
 	texPath.resize(nameSize);
 	if (!dr.Read(reinterpret_cast<u8*>(texPath.data()), nameSize)) return false;
-	std::string texExt;
-	u64 extSize;
-	if (!dr.Read(extSize)) return false;
-	texExt.resize(extSize);
-	if (extSize != 0 && !dr.Read(reinterpret_cast<u8*>(texExt.data()), extSize)) return false;
-	texPath = Maths::Util::GetHex(userID) + texPath;
+	if (!texPath.compare(0, textures->GetDefaultUserTexture()->GetPath().size(), textures->GetDefaultUserTexture()->GetPath())) return false;
+	//texPath = texPath + "@" + Maths::Util::GetHex(userID);
 	Resources::Texture* tex = textures->GetOrCreateTexture(texPath);
-	Maths::IVec2 resolution;
-	if (!dr.Read(resolution.x) || !dr.Read(resolution.y) || resolution.x < 16 || resolution.y < 16 || resolution.x > 256 || resolution.y > 16) return false;
-	u64 texDataSize;
-	if (!dr.Read(texDataSize) || texDataSize > 0x40000) return false;
-	u8* data = new u8[texDataSize];
-	if (!dr.Read(data, texDataSize))
-	{
-		delete[] data;
-		return false;
-	}
-	if (tex->LoadFromMemory(texDataSize, data, texExt, texPath, resolution) != TextureError::NONE) return false;
+	if (!tex->PreLoad(dr, texPath)) return false;
+	user->userTex = tex;
 	Chat::ActionData action;
 	Networking::Serialization::Serializer sr;
 	sr.Write(user->userID);
-	sr.Write(user->userTex->GetPath().size());
-	sr.Write(reinterpret_cast<const u8*>(user->userTex->GetPath().c_str()), user->userTex->GetPath().size());
-	sr.Write(user->userTex->GetFileType().size());
-	sr.Write(reinterpret_cast<const u8*>(user->userTex->GetFileType().c_str()), user->userTex->GetFileType().size());
-	sr.Write(user->userTex->GetTextureWidth());
-	sr.Write(user->userTex->GetTextureHeight());
-	sr.Write(user->userTex->GetFileDataSize());
-	sr.Write(user->userTex->GetFileData(), user->userTex->GetFileDataSize());
+	tex->SerializeFile(sr);
 	action.type = Chat::Action::USER_UPDATE_ICON;
 	action.data = std::vector(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize());
 	actionQueue.push_back(std::move(action));
 	return true;
 }
 
-bool Chat::ChatServerThread::ProcessServerUserDisconnection(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager)
+bool Chat::ChatServerThread::ProcessServerUserDisconnection(Networking::Serialization::Deserializer& dr)
 {
 	u64 netID;
 	if (!dr.Read(netID)) return false;
 	User* user = users->GetUserWithNetID(netID);
 	if (!user) return false;
 	u64 messID = GetMessageCounter();
-	u64 receivedTime = time(nullptr);
+	s64 receivedTime = time(nullptr);
+	if (receivedTime > user->lastActivity)
+	{
+		user->isConnected = false;
+		user->lastActivity = receivedTime;
+	}
 	std::unique_ptr<Chat::ConnectionMessage> mess = std::make_unique<Chat::ConnectionMessage>(false, user, receivedTime, messID);
 	actionQueue.push_back(std::move(mess->Serialize()));
 	manager->ReceiveMessage(std::move(mess));
 	return true;
 }
 
-bool Chat::ChatServerThread::ProcessServerUserConnection(const Networking::Address& clientIn, Chat::UserManager* users, Chat::ChatManager* manager)
+bool Chat::ChatServerThread::ProcessServerUserConnection(const Networking::Address& clientIn)
 {
 	std::vector<ActionData> tmpActions;
 	Networking::Serialization::Serializer sr;
@@ -605,6 +604,25 @@ bool Chat::ChatServerThread::ProcessServerUserConnection(const Networking::Addre
 	return true;
 }
 
+bool Chat::ChatServerThread::ProcessServerFilePart(Networking::Serialization::Deserializer& dr)
+{
+	u64 strSize;
+	std::string filePath;
+	if (!dr.Read(strSize))
+	{
+		return false;
+	}
+	filePath.resize(strSize);
+	if (!dr.Read(reinterpret_cast<u8*>(filePath.data()), strSize)) return false;
+	Resources::Texture* tex = textures->GetOrCreateTexture(filePath);
+	if (tex->IsLoaded() || !tex->AcceptPacket(dr)) return false;
+	if (tex->IsComplete() && tex->IsLoaded())
+	{
+		files.AddFileToBroadCast(tex);
+	}
+	return true;
+}
+
 void Chat::ChatServerThread::Update()
 {
 	if (!signal.Load())
@@ -619,22 +637,25 @@ void Chat::ChatServerThread::Update()
 			case Action::USER_CONNECT:
 				break;
 			case Action::USER_DISCONNECT:
-				ProcessServerUserDisconnection(dr, users, manager);
+				ProcessServerUserDisconnection(dr);
 				break;
 			case Action::MESSAGE_TEXT:
-				ProcessServerTextMessage(dr, users, manager);
+				ProcessServerTextMessage(dr);
 				break;
 			case Action::MESSAGE_IMAGE:
 				// TODO
 				break;
 			case Action::USER_UPDATE_NAME:
-				ProcessServerUserNameUpdate(dr, users, manager);
+				ProcessServerUserNameUpdate(dr);
 				break;
 			case Action::USER_UPDATE_COLOR:
-				ProcessServerUserColorUpdate(dr, users);
+				ProcessServerUserColorUpdate(dr);
 				break;
 			case Action::USER_UPDATE_ICON:
-				ProcessServerUserIconUpdate(dr, users, textures);
+				ProcessServerUserIconUpdate(dr);
+				break;
+			case Action::FILE_DATA:
+				ProcessServerFilePart(dr);
 				break;
 			default:
 				std::cout << "Warning, Invalid action type" << std::endl;
@@ -676,7 +697,7 @@ void Chat::ChatServerThread::ThreadFunc()
 				{
 					client.connect(m->emitter());
 					acceptedClients.push_front(m->emitterId());
-					ProcessServerUserConnection(m->emitter(), users, manager);
+					ProcessServerUserConnection(m->emitter());
 				}
 				else if (m->is<Networking::Messages::Connection>())
 				{

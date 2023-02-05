@@ -151,25 +151,25 @@ namespace Networking::UDP
 	{
 		fillDatagramHeader(dgram, Datagram::Type::KeepAlive);
 		// Do notify the other end if we're supposed to be connected or requesting the connection
-		std::vector<u8> data; // TODO optimise
-		data.push_back(mState == State::ConnectionSent || isConnected());
+		u8 data = 0;
+		data |= (mState == State::ConnectionSent || isConnected());
 #if NETWORK_INTERRUPTION
 		// If the connection is interrupted with that client, check whether another client is also interrupting it or not
 		// If this client is the only one causing the interruption, don't send him an interruption flag so he doesn't interrupt himself when resuming on his side
 		const bool isNetworkInterrupted = mClient.isNetworkInterrupted();
 		const bool isNetworkInterruptedByMe = mClient.isInterruptionCulprit(this);
-		data.push_back(isNetworkInterrupted && !isNetworkInterruptedByMe);
+		data |= (isNetworkInterrupted && !isNetworkInterruptedByMe) << 1;
 #endif
-		memcpy(dgram.data.data(), data.data(), data.size());
-		dgram.datasize = static_cast<u16>(data.size());
+		memcpy(dgram.data.data(), &data, 1);
+		dgram.datasize = 1;
 	}
 
 	void DistantClient::handleKeepAlive(const u8* data, const u16 datasize)
 	{
 		std::vector<u8> content = std::vector<u8>(datasize);
 		memcpy(content.data(), data, datasize);
-		bool isConnectedKeepAlive = content[0];
-		if (isConnectedKeepAlive)
+		u8 isConnectedKeepAlive = content[0];
+		if (isConnectedKeepAlive & 0x01)
 		{
 			if (mState == State::None || isConnecting())
 			{
@@ -180,7 +180,7 @@ namespace Networking::UDP
 #if NETWORK_INTERRUPTION
 		bool isNetworkInterruptedOnTheOtherEnd = false;
 		// Retrieve whether the other side has its connection interrupted and we should locally interrupt it too
-		isNetworkInterruptedOnTheOtherEnd = content.size() > 0 && content[1];
+		isNetworkInterruptedOnTheOtherEnd = content.size() > 0 && isConnectedKeepAlive & 0x02;
 		// Always consider the connection OK when a keep alive is received, but do keep in mind the network may be interrupted because it's interrupted on the other end.
 		maintainConnection(isNetworkInterruptedOnTheOtherEnd);
 #else

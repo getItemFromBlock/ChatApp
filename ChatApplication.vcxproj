@@ -194,6 +194,8 @@
     <ClCompile Include="Sources\Networking\UDP\Protocols\UnreliableOrdered.cpp" />
     <ClCompile Include="Sources\Networking\UDP\Simulator.cpp" />
     <ClCompile Include="Sources\Networking\Utils.cpp" />
+    <ClCompile Include="Sources\Resources\FileDataManager.cpp" />
+    <ClCompile Include="Sources\Resources\LargeFile.cpp" />
     <ClCompile Include="Sources\Resources\Texture.cpp" />
     <ClCompile Include="Sources\Resources\TextureManager.cpp" />
   </ItemGroup>
@@ -232,6 +234,8 @@
     <ClInclude Include="Headers\Networking\UDP\Protocols\UnreliableOrdered.hpp" />
     <ClInclude Include="Headers\Networking\UDP\Simulator.hpp" />
     <ClInclude Include="Headers\Networking\Utils.hpp" />
+    <ClInclude Include="Headers\Resources\FileDataManager.hpp" />
+    <ClInclude Include="Headers\Resources\LargeFile.hpp" />
     <ClInclude Include="Headers\Resources\SaveFile.hpp" />
     <ClInclude Include="Headers\Resources\Texture.hpp" />
     <ClInclude Include="Headers\Resources\TextureManager.hpp" />

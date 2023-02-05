@@ -1,8 +1,8 @@
 #pragma once
 
-#include <string>
-#include <memory>
 
+
+#include "LargeFile.hpp"
 #include "Maths/Maths.hpp"
 #include "Core/Types.hpp"
 #include "Core/Signal.hpp"
@@ -37,18 +37,22 @@ enum class TextureError : u8
 
 namespace Resources
 {
-	class Texture
+	class Texture : public LargeFile
 	{
 	public:
 
 		Texture();
-		~Texture();
+		virtual ~Texture() override;
 
 		static const char* GetError(TextureError error);
 		static const char* GetSTBIError();
 		static TextureError TryLoad(const char* path, Texture* ptr, Maths::Vec2 minSize = Maths::Vec2(0,0), Maths::Vec2 maxSize = Maths::Vec2(0,0), u64 maxFileSize = -1);
 
-		TextureError LoadFromMemory(u64 dataSize, unsigned char* dataIn, std::string& ext, std::string& p, Maths::IVec2 resolution);
+		virtual bool PreLoad(Networking::Serialization::Deserializer& dr, const std::string& path) override;
+		virtual bool AcceptPacket(Networking::Serialization::Deserializer& dr) override;
+		virtual bool SerializeFile(Networking::Serialization::Serializer& sr) const override;
+		TextureError LoadFromMemory();
+		TextureError GetLastError() { return lastError; }
 
 		virtual void Load(const char* path);
 		virtual void EndLoad();
@@ -58,7 +62,7 @@ namespace Resources
 
 		void DeleteData();
 
-		unsigned int GetTextureID() const;
+		u64 GetTextureID() const;
 		virtual unsigned int BindForRender();
 		virtual unsigned int BindForRender(TextureFilterType FilterIn, TextureWrapType WrapIn);
 		static unsigned int IncrementGLUnit();
@@ -85,33 +89,28 @@ namespace Resources
 		u64 GetFileDataSize() const { return dataSize; }
 		u8* GetImageData() const { return ImageData; }
 
-		const std::string& GetPath() const { return path; }
-		const std::string& GetFileType() const { return fileType; }
-
 		void SaveFileData(std::string& name);
 	protected:
 		unsigned int textureID = 0;
-		int sizeX = 0;
-		int sizeY = 0;
+		s32 sizeX = 0;
+		s32 sizeY = 0;
 		TextureFilterType filter;
 		TextureWrapType wrap;
 		bool ShouldDeleteData = true;
 		bool ShouldFlipTexture = false;
-		unsigned char* ImageData = nullptr;
-		unsigned char* FileData = nullptr;
-		u64 dataSize = 0;
+		bool IsTextureLoading = false;
+		u8* ImageData = nullptr;
 		Core::Signal loaded;
-		std::string fileType;
-		std::string path;
+		TextureError lastError = TextureError::NONE;
 
-		static inline int MAX_TEXTURE_UNIT = 16;
-		static inline int TEXTURE_UPPER = 4;
-		static inline int CUBEMAP_UPPER = 8;
-		static inline int SHADOWMAP_UPPER = 12;
-		static inline int CUBESHADOWMAP_UPPER = 16;
-		static inline int currentUnit = 0;
-		static inline int currentCubeUnit = 0;
-		static inline int currentShadowUnit = 0;
-		static inline int currentCubeShadowUnit = 0;
+		static inline s32 MAX_TEXTURE_UNIT = 16;
+		static inline s32 TEXTURE_UPPER = 4;
+		static inline s32 CUBEMAP_UPPER = 8;
+		static inline s32 SHADOWMAP_UPPER = 12;
+		static inline s32 CUBESHADOWMAP_UPPER = 16;
+		static inline s32 currentUnit = 0;
+		static inline s32 currentCubeUnit = 0;
+		static inline s32 currentShadowUnit = 0;
+		static inline s32 currentCubeShadowUnit = 0;
 	};
 }

@@ -14,6 +14,7 @@
 #include "Networking/Serialization/Serializer.hpp"
 #include "Networking/Serialization/Deserializer.hpp"
 #include "ActionData.hpp"
+#include "Resources/FileDataManager.hpp"
 
 namespace Chat
 {
@@ -65,6 +66,7 @@ namespace Chat
 		ChatManager* manager = nullptr;
 		UserManager* users = nullptr;
 		Resources::TextureManager* textures = nullptr;
+		Resources::FileDataManager files;
 	};
 
 	class ChatClientThread : public ChatNetworkThread
@@ -81,9 +83,11 @@ namespace Chat
 
 		void ThreadFunc();
 	private:
-		bool ProcessUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
-		bool ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
-		bool ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures);
+		bool ProcessUserNameUpdate(Networking::Serialization::Deserializer& dr);
+		bool ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr);
+		bool ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr);
+		bool ProcessTextMessage(Networking::Serialization::Deserializer& dr);
+		bool ProcessFilePart(Networking::Serialization::Deserializer& dr);
 	};
 
 	class ChatServerThread : public ChatNetworkThread
@@ -102,12 +106,13 @@ namespace Chat
 
 		void ThreadFunc();
 	private:
-		bool ProcessServerTextMessage(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
-		bool ProcessServerUserColorUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users);
-		bool ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
-		bool ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Resources::TextureManager* textures);
-		bool ProcessServerUserDisconnection(Networking::Serialization::Deserializer& dr, Chat::UserManager* users, Chat::ChatManager* manager);
-		bool ProcessServerUserConnection(const Networking::Address& clientIn, Chat::UserManager* users, Chat::ChatManager* manager);
+		bool ProcessServerTextMessage(Networking::Serialization::Deserializer& dr);
+		bool ProcessServerUserColorUpdate(Networking::Serialization::Deserializer& dr);
+		bool ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr);
+		bool ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr);
+		bool ProcessServerUserDisconnection(Networking::Serialization::Deserializer& dr);
+		bool ProcessServerUserConnection(const Networking::Address& clientIn);
+		bool ProcessServerFilePart(Networking::Serialization::Deserializer& dr);
 
 		std::forward_list<u64> acceptedClients;
 	};

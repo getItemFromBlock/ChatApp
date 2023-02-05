@@ -9,6 +9,7 @@ namespace Networking::Serialization
 	{
 	public:
 		Deserializer(const u8* data, u64 dataSize) : buffer(data), bufferSize(dataSize) {}
+		Deserializer(const std::vector<u8>& data) : Deserializer(data.data(), data.size()) {}
 
 		~Deserializer() = default;
 

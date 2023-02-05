@@ -11,6 +11,9 @@
 #include <filesystem>
 #include <fstream>
 
+#include "Networking/Serialization/Serializer.hpp"
+#include "Networking/Serialization/Deserializer.hpp"
+
 static const int WrapTable[] = { GL_REPEAT, GL_MIRRORED_REPEAT, GL_MIRROR_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_BORDER };
 static const int FilterTable[] = { GL_NEAREST, GL_LINEAR };
 
@@ -51,7 +54,10 @@ const char* Resources::Texture::GetSTBIError()
 
 TextureError Resources::Texture::TryLoad(const char* pathIn, Texture* tex, Maths::Vec2 minSize, Maths::Vec2 maxSize, u64 maxFileSize)
 {
-	
+	if (tex->IsLoaded())
+	{
+		tex->UnLoad();
+	}
 	std::filesystem::path p = pathIn;
 	if (!std::filesystem::exists(p))
 	{
@@ -102,25 +108,56 @@ TextureError Resources::Texture::TryLoad(const char* pathIn, Texture* tex, Maths
 	return TextureError::NONE;
 }
 
-TextureError Resources::Texture::LoadFromMemory(u64 dataSizeIn, unsigned char* dataIn, std::string& ext, std::string& p, Maths::IVec2 resolution)
+bool Resources::Texture::PreLoad(Networking::Serialization::Deserializer& dr, const std::string& pathIn)
 {
-	path = p;
-	fileType = ext;
-	dataSize = dataSizeIn;
-	FileData = dataIn;
+	if (loaded.Load()) UnLoad();
+	if (FileData)
+	{
+		delete[] FileData;
+		FileData = nullptr;
+		receivedParts.clear();
+	}
+	if (!LargeFile::PreLoad(dr, pathIn)) return false;
+	return (dr.Read(sizeX) && dr.Read(sizeY));
+}
+
+bool Resources::Texture::AcceptPacket(Networking::Serialization::Deserializer& dr)
+{
+	if (!LargeFile::AcceptPacket(dr)) return false;
+	if (complete)
+	{
+		LoadFromMemory();
+	}
+	return true;
+}
+
+bool Resources::Texture::SerializeFile(Networking::Serialization::Serializer& sr) const
+{
+	if (!LargeFile::SerializeFile(sr)) return false;
+	sr.Write(sizeX);
+	sr.Write(sizeY);
+	return true;
+}
+
+TextureError Resources::Texture::LoadFromMemory()
+{
+	if (loaded.Load())
+	{
+		UnLoad();
+	}
 	int nrChannels;
+	Maths::IVec2 res = Maths::IVec2(sizeX, sizeY);
 	stbi_set_flip_vertically_on_load_thread(false);
 	ImageData = stbi_load_from_memory(FileData, dataSize, &sizeX, &sizeY, &nrChannels, 4);
 	if (!ImageData)
 	{
 		return TextureError::IMG_INVALID;
 	}
-	Maths::IVec2 res = Maths::IVec2(GetTextureWidth(), GetTextureHeight());
-	if (res.x != resolution.x || res.y != resolution.y)
+	if (res.x != sizeX || res.y != sizeY) // whatever happened here, something went wrong
 	{
 		stbi_image_free(ImageData);
 		ImageData = nullptr;
-		return TextureError::IMG_TOO_BIG;
+		return TextureError::OTHER;
 	}
 	EndLoad();
 	return TextureError::NONE;
@@ -166,11 +203,6 @@ void Texture::Load(const char* pathIn)
 
 void Resources::Texture::EndLoad()
 {
-	if (loaded.Load())
-	{
-		UnLoad();
-		return;
-	}
 	if (!ImageData) return;
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_2D, textureID);
@@ -206,7 +238,7 @@ void Resources::Texture::DeleteData()
 	}
 }
 
-unsigned int Resources::Texture::GetTextureID() const
+u64 Resources::Texture::GetTextureID() const
 {
 	return textureID;
 }

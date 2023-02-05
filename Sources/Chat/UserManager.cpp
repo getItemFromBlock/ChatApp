@@ -4,7 +4,7 @@ using namespace Chat;
 
 UserManager::UserManager(Resources::TextureManager& manager) : textures(manager)
 {
-	std::unique_ptr<User> unknownUser = std::make_unique<User>("Unknown User", 0, textures.GetDefaultTexture());
+	std::unique_ptr<User> unknownUser = std::make_unique<User>("Unknown User", 0, textures.GetDefaultUserTexture());
 	users.emplace(0, std::move(unknownUser));
 }
 
@@ -43,7 +43,7 @@ User* UserManager::GetOrCreateUser(u64 userID)
 	auto res = users.find(userID);
 	if (res == users.end())
 	{
-		std::unique_ptr<User> tempUser = std::make_unique<User>("User", userID, textures.GetDefaultTexture());
+		std::unique_ptr<User> tempUser = std::make_unique<User>("User", userID, textures.GetDefaultUserTexture());
 		ptr = tempUser.get();
 		users.emplace(userID, std::move(tempUser));
 	}

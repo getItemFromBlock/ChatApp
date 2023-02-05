@@ -194,7 +194,7 @@ void App::Run()
 			//std::filesystem::copy_file(texPath, dest);
 			std::string path = texPath.string();
 			Resources::Texture* tex = textures->GetOrCreateTexture(path);
-			lastError = Resources::Texture::TryLoad(path.c_str(), tex, Maths::Vec2(16, 16), Maths::Vec2(256, 256), 0x40000);
+			lastError = Resources::Texture::TryLoad(path.c_str(), tex, Maths::Vec2(1, 1), Maths::Vec2(512, 512), 0x40000);
 			if (lastError == TextureError::NONE)
 			{
 				tmpTexture = tex;
@@ -222,10 +222,10 @@ void App::Run()
 				ImGui::TextUnformatted("Image file is too big!\nMaximum is 262144 (256k) bytes");
 				break;
 			case TextureError::IMG_TOO_SMALL:
-				ImGui::TextUnformatted("Image resolution is too small!\nMinimum is 16/16 pixels");
+				ImGui::TextUnformatted("Image resolution is too small!\nMinimum is 1 pixel");
 				break;
 			case TextureError::IMG_TOO_BIG:
-				ImGui::TextUnformatted("Image resolution is too big!\nMaximum is 256/256 pixels");
+				ImGui::TextUnformatted("Image resolution is too big!\nMaximum is 512 pixels");
 				break;
 			case TextureError::IMG_INVALID:
 				ImGui::TextUnformatted("Image file is invalid or corrupted!");
