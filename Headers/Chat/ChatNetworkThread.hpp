@@ -67,6 +67,7 @@ namespace Chat
 		UserManager* users = nullptr;
 		Resources::TextureManager* textures = nullptr;
 		Resources::FileDataManager files;
+		bool clientStallBool = false;
 	};
 
 	class ChatClientThread : public ChatNetworkThread

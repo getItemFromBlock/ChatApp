@@ -106,7 +106,7 @@ void Chat::ImageMessage::Draw() const
 	else
 	{
 		ImGui::Image((ImTextureID)unloadedImg->GetTextureID(), ImVec2(200, 200));
-		ImGui::SetCursorPos(ImVec2(pos.x, pos.y + 90));
+		ImGui::SetCursorPos(ImVec2(pos.x, pos.y + 100));
 		ImGui::ProgressBar(tex->GetLoadingCompletion(), ImVec2(200, 20));
 	}
 	ImGui::SetCursorPosX(pos.x);

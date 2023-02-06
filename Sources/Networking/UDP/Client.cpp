@@ -267,7 +267,7 @@ namespace Networking::UDP
 			if (c->id() != clientID) continue;
 			return c->address();
 		}
-		return Address();
+		return mClients[0]->address();
 	}
 
 	bool Client::IsClientDisconnected(const Address& clientAddr)

@@ -81,7 +81,7 @@ bool Resources::LargeFile::SerializeFile(Networking::Serialization::Serializer& 
 
 u32 Resources::LargeFile::GetPacketsCount() const
 {
-	return (dataSize >> 15) + ((dataSize & 0x7fff) != 0);
+	return static_cast<u32>((dataSize >> 15) + ((dataSize & 0x7fff) != 0));
 }
 
 u32 Resources::LargeFile::GetLastPacketSize() const

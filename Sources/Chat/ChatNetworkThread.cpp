@@ -22,7 +22,7 @@ Chat::ChatNetworkThread::~ChatNetworkThread()
 void Chat::ChatNetworkThread::Update()
 {
 	actions.clear();
-	if (files.HasPendingFiles())
+	if (files.HasPendingFiles() && !clientStallBool)
 	{
 		actionQueue.push_back(std::move(files.GetNextFilePart()));
 	}
@@ -299,6 +299,7 @@ void Chat::ChatClientThread::Update()
 				break;
 			}
 		}
+		clientStallBool = !clientStallBool;
 		ChatNetworkThread::Update();
 	}
 }
@@ -433,6 +434,11 @@ void Chat::ChatClientThread::ThreadFunc()
 			}
 			if(sr.GetBufferSize() > 0) client.sendTo(address, sr.GetBuffer(), sr.GetBufferSize(), 0);
 			signal.Store(false);
+		}
+		else if (state == ChatNetworkState::CONNECTED || state == ChatNetworkState::WAITING_CONNECTION)
+		{
+			client.receive();
+			client.processSend();
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
@@ -863,6 +869,11 @@ void Chat::ChatServerThread::ThreadFunc()
 				}
 			}
 			signal.Store(false);
+		}
+		else if (state == ChatNetworkState::CONNECTED)
+		{
+			client.receive();
+			client.processSend();
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
