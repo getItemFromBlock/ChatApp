@@ -18,15 +18,16 @@ namespace Chat
 
 		virtual ~ChatMessage() = default;
 
-		virtual void Draw() = 0;
+		virtual void Draw() const = 0;
 
-		virtual Chat::ActionData Serialize() = 0;
+		virtual Chat::ActionData Serialize() const = 0;
 
-		User* GetSender() { return sender; }
-		f32 GetHeight() { return height; }
-		u64 GetID() { return messageID; }
+		User* GetSender() const { return sender; }
+		f32 GetHeight() const { return height; }
+		u64 GetID() const { return messageID; }
+		s64 GetTimeStamp() const { return unixTime; }
 	protected:
-		void DrawUser(ImVec2& pos);
+		void DrawUser(ImVec2& pos) const;
 
 		User* sender = nullptr;
 		u64 messageID = 0;
@@ -43,8 +44,8 @@ namespace Chat
 		TextMessage(std::string& textIn, User* userIn, s64 tm, u64 id = 0);
 
 		virtual ~TextMessage() override = default;
-		virtual void Draw() override;
-		Chat::ActionData Serialize() override;
+		virtual void Draw() const override;
+		Chat::ActionData Serialize() const override;
 
 		static float MaxWidth;
 	protected:
@@ -58,8 +59,8 @@ namespace Chat
 		ImageMessage(Resources::Texture* img, User* userIn, s64 tm, u64 id = 0);
 
 		virtual ~ImageMessage() override = default;
-		virtual void Draw() override;
-		Chat::ActionData Serialize() override;
+		virtual void Draw() const override;
+		Chat::ActionData Serialize() const override;
 
 	protected:
 		Resources::Texture* tex;
@@ -73,8 +74,8 @@ namespace Chat
 		ConnectionMessage(bool connected, User* userIn, s64 tm, u64 id = 0);
 
 		virtual ~ConnectionMessage() override = default;
-		virtual void Draw() override;
-		Chat::ActionData Serialize() override;
+		virtual void Draw() const override;
+		Chat::ActionData Serialize() const override;
 
 	protected:
 		bool connect;

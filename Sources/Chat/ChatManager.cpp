@@ -87,15 +87,13 @@ void ChatManager::Render()
 		Chat::TextMessage::MaxWidth = ImGui::GetContentRegionMax().x - ImGui::GetWindowContentRegionMin().x - 90;
 		ImGui::SetCursorPosX(70);
 		float pos = totalHeight + 10;
-		size_t index = messages.size();
-		while (index)
+		for (auto it = messages.rbegin(); it != messages.rend(); it++)
 		{
-			pos -= messages[index-1]->GetHeight();
+			pos -= it->get()->GetHeight();
 			ImGui::SetCursorPosY(pos);
-			messages[index-1]->Draw();
+			it->get()->Draw();
 			pos -= 10;
 			ImGui::SetCursorPosY(pos);
-			index--;
 		}
 		ImGui::End();
 		ImGui::Begin("Channel", nullptr, ImGuiWindowFlags_NoCollapse);
@@ -151,21 +149,27 @@ void ChatManager::Render()
 
 void Chat::ChatManager::ReceiveMessage(std::unique_ptr<ChatMessage>&& mess)
 {
+	for (auto it = messages.rbegin(); it != messages.rend(); it++)
+	{
+		if (it->get()->GetTimeStamp() <= mess->GetTimeStamp())
+		{
+			totalHeight += mess->GetHeight() + 10;
+			messages.emplace(it.base(), std::move(mess));
+			if (it == messages.rbegin())
+			{
+				lastHeight = 0;
+				setDown = true;
+			}
+			return;
+		}
+	}
 	totalHeight += mess->GetHeight() + 10;
+	messages.push_back(std::move(mess));
 	lastHeight = 0;
 	setDown = true;
-	messages.push_back(std::move(mess));
 }
 
-void Chat::ChatManager::RetreiveMessages(std::vector<ActionData>& outputVec, u64 first, u64 last)
-{
-	for (u64 index = first; index < messages.size() && index < last; index++)
-	{
-
-	}
-}
-
-const std::vector<std::unique_ptr<ChatMessage>>& ChatManager::GetAllMessages()
+const std::list<std::unique_ptr<ChatMessage>>& ChatManager::GetAllMessages()
 {
 	return messages;
 }
@@ -187,11 +191,14 @@ void Chat::ChatManager::DrawPopup()
 		case TextureError::FILE_TOO_BIG:
 			ImGui::TextUnformatted("Image file is too big!\nMaximum is 8388608 (8M) bytes");
 			break;
+		case TextureError::FILE_PATH_TOO_LONG:
+			ImGui::TextUnformatted("Image file path is too long!\nMaximum is 512 characters");
+			break;
 		case TextureError::IMG_TOO_SMALL:
-			ImGui::TextUnformatted("Image resolution is too small!\nMinimum is / pixels");
+			ImGui::TextUnformatted("Image resolution is too small!\nMinimum is 1/1 pixels");
 			break;
 		case TextureError::IMG_TOO_BIG:
-			ImGui::TextUnformatted("Image resolution is too big!\nMaximum is / pixels");
+			ImGui::TextUnformatted("Image resolution is too big!\nMaximum is nan/nan pixels"); // gg pour celui qui tombe sur cette erreur là
 			break;
 		case TextureError::IMG_INVALID:
 			ImGui::TextUnformatted("Image file is invalid or corrupted!");

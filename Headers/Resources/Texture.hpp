@@ -29,6 +29,7 @@ enum class TextureError : u8
 	NONE = 0,
 	NO_FILE,
 	FILE_TOO_BIG,
+	FILE_PATH_TOO_LONG,
 	IMG_TOO_SMALL,
 	IMG_TOO_BIG,
 	IMG_INVALID,

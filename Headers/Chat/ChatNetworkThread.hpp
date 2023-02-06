@@ -111,7 +111,7 @@ namespace Chat
 		bool ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr);
 		bool ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr);
 		bool ProcessServerUserDisconnection(Networking::Serialization::Deserializer& dr);
-		bool ProcessServerUserConnection(const Networking::Address& clientIn);
+		bool ProcessServerUserConnection(const Networking::Address& clientIn, u64 clientNetworkID);
 		bool ProcessServerFilePart(Networking::Serialization::Deserializer& dr);
 
 		std::forward_list<u64> acceptedClients;

@@ -119,7 +119,7 @@ int App::Init()
 
 	fileDialog = std::make_unique<ImGui::FileBrowser>();
 	fileDialog->SetTitle("Image Selection");
-	fileDialog->SetTypeFilters({ ".png", ".jpg", ".jpeg", ".ico" });
+	fileDialog->SetTypeFilters({ ".png", ".jpg", ".jpeg", ".gif" });
 
 	return 0;
 }
@@ -158,6 +158,7 @@ void App::Run()
 		{
 			ImGui::Begin("User Settings", &userSettings, ImGuiWindowFlags_NoCollapse);
 			ImGui::InputText("User Name", &tmpUserName);
+			if (tmpUserName.size() > 64) tmpUserName.resize(64);
 			ImGui::Image((ImTextureID)tmpTexture->GetTextureID(), ImVec2(100, 100));
 			if (ImGui::IsItemClicked())
 			{
@@ -220,6 +221,9 @@ void App::Run()
 				break;
 			case TextureError::FILE_TOO_BIG:
 				ImGui::TextUnformatted("Image file is too big!\nMaximum is 262144 (256k) bytes");
+				break;
+			case TextureError::FILE_PATH_TOO_LONG:
+				ImGui::TextUnformatted("Image file path is too long!\nMaximum is 512 characters");
 				break;
 			case TextureError::IMG_TOO_SMALL:
 				ImGui::TextUnformatted("Image resolution is too small!\nMinimum is 1 pixel");

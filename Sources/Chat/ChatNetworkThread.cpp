@@ -28,11 +28,20 @@ void Chat::ChatNetworkThread::Update()
 	}
 	for (size_t i = 0; i < actionQueue.size(); i++)
 	{
+		if (actionQueue[i].type == Action::USER_UPDATE_ICON)
+		{
+			Networking::Serialization::Deserializer dr(actionQueue[i].data);
+			u64 userID;
+			if (dr.Read(userID))
+			{
+				User* user = users->GetUser(userID);
+				if (user->userID != 0)
+				{
+					files.AddFileToBroadCast(user->userTex);
+				}
+			}
+		}
 		actions.push_back(std::move(actionQueue[i]));
-	}
-	if (actions.size() == 0)
-	{
-		actions.push_back(std::move(ActionData(Action::PING, nullptr, 0)));
 	}
 	actionQueue.clear();
 	signal.Store(true);
@@ -153,7 +162,6 @@ Chat::ActionData Chat::ChatNetworkThread::SendUserIcon(Chat::User* user)
 	user->userTex->SerializeFile(sr);
 	data.type = Chat::Action::USER_UPDATE_ICON;
 	data.data = std::vector(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize());
-	files.AddFileToBroadCast(user->userTex);
 	return data;
 }
 
@@ -161,7 +169,7 @@ bool Chat::ChatClientThread::ProcessTextMessage(Networking::Serialization::Deser
 {
 	u64 userID;
 	u64 messID;
-	u64 mTime;
+	s64 mTime;
 	std::string tmp;
 	u64 size;
 	if (!dr.Read(mTime) || !dr.Read(userID) || !dr.Read(messID))
@@ -200,7 +208,7 @@ void Chat::ChatClientThread::Update()
 			std::unique_ptr<Chat::ConnectionMessage> mess;
 			u64 userID;
 			u64 messID;
-			u64 mTime;
+			s64 mTime;
 			Networking::Serialization::Deserializer dr = Networking::Serialization::Deserializer(a.data.data(), a.data.size());
 			switch (a.type)
 			{
@@ -307,6 +315,7 @@ void Chat::ChatClientThread::ThreadFunc()
 							response.push_back(SendUserName(self));
 							response.push_back(SendUserColor(self));
 							response.push_back(SendUserIcon(self));
+							files.AddFileToBroadCast(self->userTex);
 							break;
 						case Networking::Messages::Connection::Result::Failed:
 							lastError = "Could not connect to server";
@@ -573,7 +582,7 @@ bool Chat::ChatServerThread::ProcessServerUserDisconnection(Networking::Serializ
 	return true;
 }
 
-bool Chat::ChatServerThread::ProcessServerUserConnection(const Networking::Address& clientIn)
+bool Chat::ChatServerThread::ProcessServerUserConnection(const Networking::Address& clientIn, u64 clientNetworkID)
 {
 	std::vector<ActionData> tmpActions;
 	Networking::Serialization::Serializer sr;
@@ -583,10 +592,11 @@ bool Chat::ChatServerThread::ProcessServerUserConnection(const Networking::Addre
 		tmpActions.push_back(SendUserName(u.second.get()));
 		tmpActions.push_back(SendUserColor(u.second.get()));
 		tmpActions.push_back(SendUserIcon(u.second.get()));
+		files.AddFileToUser(clientNetworkID, u.second->userTex);
 	}
 	for (auto& m : manager->GetAllMessages())
 	{
-		tmpActions.push_back(m->Serialize());
+		files.AddMessageToUser(clientNetworkID, m.get());
 	}
 	for (size_t i = 0; i < tmpActions.size(); i++)
 	{
@@ -672,7 +682,6 @@ void Chat::ChatServerThread::ThreadFunc()
 	{
 		if (state == ChatNetworkState::CONNECTED && signal.Load())
 		{
-			std::vector<ActionData> response;
 			Networking::Serialization::Serializer sr;
 			for (size_t i = 0; i < actions.size(); i++)
 			{
@@ -687,6 +696,28 @@ void Chat::ChatServerThread::ThreadFunc()
 			{
 				client.broadCast(sr.GetBuffer(), sr.GetBufferSize(), 0);
 			}
+			else
+			{
+				for (auto& u : users->GetAllUsers())
+				{
+					if (u.first == 0 || u.second.get() == self) continue;
+					Networking::Serialization::Serializer sr2;
+					if (files.HasUserPendingData(u.second->networkID))
+					{
+						ActionData action = files.GetNextUserDataPart(u.second->networkID);
+						sr2.Write(static_cast<u8>(action.type));
+						sr2.Write(action.data.size());
+						if (action.data.size() != 0)
+						{
+							sr2.Write(action.data.data(), action.data.size());
+						}
+					}
+					if (sr2.GetBufferSize() > 0)
+					{
+						client.sendTo(u.second->clientAddress, sr2.GetBuffer(), sr2.GetBufferSize(), 0);
+					}
+				}
+			}
 			actions.clear();
 			client.receive();
 			client.processSend();
@@ -697,7 +728,7 @@ void Chat::ChatServerThread::ThreadFunc()
 				{
 					client.connect(m->emitter());
 					acceptedClients.push_front(m->emitterId());
-					ProcessServerUserConnection(m->emitter());
+					ProcessServerUserConnection(m->emitter(), m->emitterId());
 				}
 				else if (m->is<Networking::Messages::Connection>())
 				{
@@ -755,20 +786,9 @@ void Chat::ChatServerThread::ThreadFunc()
 					actions.push_back(std::move(action));
 				}
 			}
-			Networking::Serialization::Serializer sr2;
-			for (size_t i = 0; i < response.size(); i++)
-			{
-				sr2.Write(static_cast<u8>(response[i].type));
-				sr2.Write(response[i].data.size());
-				if (response[i].data.size() != 0)
-				{
-					sr2.Write(response[i].data.data(), response[i].data.size());
-				}
-			}
-			if (sr2.GetBufferSize() > 0) client.broadCast(sr2.GetBuffer(), sr2.GetBufferSize(), 0);
 			signal.Store(false);
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(30));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 	if (address.isValid())
 	{

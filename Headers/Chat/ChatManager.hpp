@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 #include <memory>
-#include <vector>
+#include <list>
 
 #include "ChatMessage.hpp"
 #include "ChatNetworkThread.hpp"
@@ -42,16 +42,14 @@ namespace Chat
 
 		void ReceiveMessage(std::unique_ptr<ChatMessage>&& mess);
 
-		void RetreiveMessages(std::vector<ActionData>& outputVec, u64 first = 0, u64 last = -1);
-
-		const std::vector<std::unique_ptr<ChatMessage>>& GetAllMessages();
+		const std::list<std::unique_ptr<ChatMessage>>& GetAllMessages();
 
 	protected:
 		UserManager* users;
 		Resources::TextureManager* textures;
 		u64 selfID = 0;
 		ImGui::FileBrowser* browser = nullptr;
-		std::vector<std::unique_ptr<ChatMessage>> messages;
+		std::list<std::unique_ptr<ChatMessage>> messages;
 		std::unique_ptr<ChatNetworkThread> ntwThread;
 		float totalHeight = 0.0f;
 		std::string currentText;

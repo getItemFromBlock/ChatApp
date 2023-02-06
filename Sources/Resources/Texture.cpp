@@ -67,6 +67,10 @@ TextureError Resources::Texture::TryLoad(const char* pathIn, Texture* tex, Maths
 	{
 		return TextureError::FILE_TOO_BIG;
 	}
+	else if (p.string().length() > 512)
+	{
+		return TextureError::FILE_PATH_TOO_LONG;
+	}
 	tex->fileType = p.extension().string();
 	tex->path = pathIn;
 	std::ifstream file(p, std::ios::ate | std::ios::binary);

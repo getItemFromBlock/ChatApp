@@ -39,7 +39,7 @@ Chat::TextMessage::TextMessage(std::string& textIn, User* userIn, s64 tm, u64 id
 	if (height < 60) height = 60;
 }
 
-void TextMessage::Draw()
+void TextMessage::Draw() const
 {
 	ImVec2 pos = ImGui::GetCursorPos();
 	DrawUser(pos);
@@ -60,14 +60,14 @@ void TextMessage::Draw()
 	ImGui::SetCursorPosX(pos.x);
 }
 
-Chat::ActionData Chat::TextMessage::Serialize()
+Chat::ActionData Chat::TextMessage::Serialize() const
 {
 	Networking::Serialization::Serializer sr;
 	sr.Write(unixTime);
 	sr.Write(sender->userID);
 	sr.Write(messageID);
 	sr.Write(message.size());
-	sr.Write(reinterpret_cast<u8*>(message.data()), message.size());
+	sr.Write(reinterpret_cast<const u8*>(message.data()), message.size());
 	Chat::ActionData action;
 	action.type = Chat::Action::MESSAGE_TEXT;
 	action.data = std::vector(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize());
@@ -80,7 +80,7 @@ Chat::ImageMessage::ImageMessage(Resources::Texture* img, User* userIn, s64 tm, 
 	width = tex->GetTextureWidth() * 200.0f / tex->GetTextureHeight();
 }
 
-void Chat::ImageMessage::Draw()
+void Chat::ImageMessage::Draw() const
 {
 	ImVec2 pos = ImGui::GetCursorPos();
 	DrawUser(pos);
@@ -102,7 +102,7 @@ void Chat::ImageMessage::Draw()
 	ImGui::SetCursorPosX(pos.x);
 }
 
-Chat::ActionData Chat::ImageMessage::Serialize()
+Chat::ActionData Chat::ImageMessage::Serialize() const
 {
 	// TODO
 	return Chat::ActionData();
@@ -115,7 +115,6 @@ Chat::ChatMessage::ChatMessage(User* s, s64 timeIn, u64 id) : sender(s), message
 	tm timeinfo;
 	char buffer[80];
 
-	time(&unixTime);
 	if (!localtime_s(&timeinfo, &unixTime))
 	{
 		strftime(buffer, sizeof(buffer), "%d/%m/%Y %H:%M:%S", &timeinfo);
@@ -123,7 +122,7 @@ Chat::ChatMessage::ChatMessage(User* s, s64 timeIn, u64 id) : sender(s), message
 	}
 }
 
-void Chat::ChatMessage::DrawUser(ImVec2& pos)
+void Chat::ChatMessage::DrawUser(ImVec2& pos) const
 {
 	ImGui::SetCursorPos(ImVec2(pos.x - 60, pos.y));
 	ImGui::Image((ImTextureID)sender->userTex->GetTextureID(), ImVec2(50, 50));
@@ -143,7 +142,7 @@ Chat::ConnectionMessage::ConnectionMessage(bool connected, User* userIn, s64 tm,
 	height = ImGui::GetTextLineHeight() + 10;
 }
 
-void Chat::ConnectionMessage::Draw()
+void Chat::ConnectionMessage::Draw() const
 {
 	ImVec2 pos = ImGui::GetCursorPos();
 	ImGui::SetCursorPos(ImVec2(pos.x, pos.y));
@@ -159,7 +158,7 @@ void Chat::ConnectionMessage::Draw()
 	ImGui::SetCursorPosX(pos.x);
 }
 
-Chat::ActionData Chat::ConnectionMessage::Serialize()
+Chat::ActionData Chat::ConnectionMessage::Serialize() const
 {
 	Networking::Serialization::Serializer sr2;
 	sr2.Write(unixTime);
