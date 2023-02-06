@@ -259,9 +259,14 @@ namespace Networking::UDP
 		return std::move(mMessages);
 	}
 
-	const Address& Client::GetClientAddress(u64 clientIndex)
+	const Address& Client::GetClientAddress(u64 clientID)
 	{
-		return mClients[clientIndex]->address();
+		for (auto& c : mClients)
+		{
+			if (c->id() != clientID) continue;
+			return c->address();
+		}
+		return Address();
 	}
 
 	bool Client::IsClientDisconnected(const Address& clientAddr)
