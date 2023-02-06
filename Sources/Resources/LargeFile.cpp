@@ -20,6 +20,10 @@ bool LargeFile::PreLoad(Networking::Serialization::Deserializer& dr, const std::
 	{
 		delete[] FileData;
 		FileData = nullptr;
+	}
+	if (complete)
+	{
+		complete = false;
 		receivedParts.clear();
 	}
 	path = pathIn;
@@ -29,7 +33,7 @@ bool LargeFile::PreLoad(Networking::Serialization::Deserializer& dr, const std::
 	if (!dr.Read(reinterpret_cast<u8*>(fileType.data()), tmpSize)) return false;
 	if (!dr.Read(dataSize)) return false;
 	u32 pkCount = GetPacketsCount();
-	receivedParts.resize(pkCount);
+	receivedParts.resize(pkCount, false);
 	FileData = new u8[dataSize];
 	complete = false;
 	return true;
@@ -84,4 +88,12 @@ u32 Resources::LargeFile::GetLastPacketSize() const
 {
 	u32 result = dataSize & 0x7fff;
 	return result == 0 ? 0x8000 : result;
+}
+
+float Resources::LargeFile::GetLoadingCompletion() const
+{
+	if (receivedParts.size() == 0) return 1.0f;
+	u32 total = 0;
+	for (u32 i = 0; i < receivedParts.size(); i++) if (receivedParts[i]) total++;
+	return total * 1.0f / receivedParts.size();
 }

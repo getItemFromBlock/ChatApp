@@ -60,6 +60,11 @@ void Chat::ServerChatManager::Update()
 	reinterpret_cast<ChatServerThread*>(ntwThread.get())->Update();
 }
 
+Chat::ChatManager::ChatManager(UserManager* u, Resources::TextureManager* t, u64 s, ImGui::FileBrowser* br) : users(u), textures(t), selfID(s), browser(br)
+{
+	ImageMessage::SetDefaultImage(textures->GetLoadingImage());
+}
+
 void Chat::ChatManager::UpdateUserName()
 {
 	ntwThread->PushAction(ntwThread->SendUserName(users->GetUser(selfID)));
@@ -111,8 +116,7 @@ void ChatManager::Render()
 		ImGui::SameLine();
 		if (ImGui::Button("Send Image"))
 		{
-			// TODO
-			//browser->Open();
+			browser->Open();
 		}
 		browser->Display();
 		if (browser->HasSelected())
@@ -120,25 +124,14 @@ void ChatManager::Render()
 			std::filesystem::path texPath = browser->GetSelected();
 			std::string path = texPath.string();
 			Resources::Texture* result = textures->GetOrCreateTexture(path);
-			if (result->IsLoaded())
+			lastError = Resources::Texture::TryLoad(path.c_str(), result, Maths::Vec2(), Maths::Vec2(), 0x800000);
+			if (lastError == TextureError::NONE)
 			{
-				std::unique_ptr<ImageMessage> mes = std::make_unique<ImageMessage>(result, users->GetUser(selfID), time(nullptr));
-				totalHeight += mes->GetHeight() + 10;
-				messages.push_back(std::move(mes));
+				SendChatImage(result);
 			}
 			else
 			{
-				lastError = Resources::Texture::TryLoad(path.c_str(), result, Maths::Vec2(), Maths::Vec2(), 0x800000);
-				if (lastError == TextureError::NONE)
-				{
-					std::unique_ptr<ImageMessage> mes = std::make_unique<ImageMessage>(result, users->GetUser(selfID), time(nullptr));
-					totalHeight += mes->GetHeight() + 10;
-					messages.push_back(std::move(mes));
-				}
-				else
-				{
-					ImGui::OpenPopup("Chat Texture Error");
-				}
+				ImGui::OpenPopup("Chat Texture Error");
 			}
 			browser->ClearSelected();
 		}
@@ -151,7 +144,7 @@ void Chat::ChatManager::ReceiveMessage(std::unique_ptr<ChatMessage>&& mess)
 {
 	for (auto it = messages.rbegin(); it != messages.rend(); it++)
 	{
-		if (it->get()->GetTimeStamp() <= mess->GetTimeStamp())
+		if (mess->GetTimeStamp() >= it->get()->GetTimeStamp())
 		{
 			totalHeight += mess->GetHeight() + 10;
 			messages.emplace(it.base(), std::move(mess));
@@ -164,9 +157,7 @@ void Chat::ChatManager::ReceiveMessage(std::unique_ptr<ChatMessage>&& mess)
 		}
 	}
 	totalHeight += mess->GetHeight() + 10;
-	messages.push_back(std::move(mess));
-	lastHeight = 0;
-	setDown = true;
+	messages.push_front(std::move(mess));;
 }
 
 const std::list<std::unique_ptr<ChatMessage>>& ChatManager::GetAllMessages()
@@ -223,6 +214,7 @@ void Chat::ChatManager::DrawPopup()
 Chat::ClientChatManager::ClientChatManager(UserManager* users, Resources::TextureManager* textures, u64 s, ImGui::FileBrowser* br) : ChatManager(users, textures, s, br)
 {
 	ntwThread = std::make_unique<ChatClientThread>(users->GetUser(selfID), this, users, textures);
+	if ((time(nullptr) & 0x7) == 0) rRandom = true;
 }
 
 void Chat::ClientChatManager::SendChatMessage()
@@ -232,6 +224,17 @@ void Chat::ClientChatManager::SendChatMessage()
 	sr.Write(currentText.size());
 	sr.Write(reinterpret_cast<u8*>(currentText.data()), currentText.size());
 	ntwThread->PushAction(Action::MESSAGE_TEXT, sr.GetBuffer(), sr.GetBufferSize());
+	currentText.clear();
+}
+
+void Chat::ClientChatManager::SendChatImage(Resources::Texture* tex)
+{
+	Networking::Serialization::Serializer sr;
+	sr.Write((s64)0);
+	sr.Write(selfID);
+	sr.Write((u64)0);
+	tex->SerializeFile(sr);
+	ntwThread->PushAction(Action::MESSAGE_IMAGE, sr.GetBuffer(), sr.GetBufferSize());
 	currentText.clear();
 }
 
@@ -253,7 +256,7 @@ void Chat::ClientChatManager::Render()
 		}
 		break;
 	case ChatNetworkState::CONNECTION_LOST:
-		if (ImGui::Begin("Disconnected", nullptr, ImGuiWindowFlags_NoCollapse))
+		if (ImGui::Begin(rRandom ? "Get Disconnected Idiot" : "Disconnected", nullptr, ImGuiWindowFlags_NoCollapse))
 		{
 			ImGui::TextUnformatted("Connection error :");
 			ImGui::TextUnformatted(ntwThread->GetLastError());
@@ -288,6 +291,20 @@ void Chat::ServerChatManager::SendChatMessage()
 	sr.Write(reinterpret_cast<u8*>(currentText.data()), currentText.size());
 	ntwThread->PushAction(Chat::Action::MESSAGE_TEXT, sr.GetBuffer(), sr.GetBufferSize());
 	currentText.clear();
+}
+
+void Chat::ServerChatManager::SendChatImage(Resources::Texture* tex)
+{
+	u64 messID = reinterpret_cast<ChatServerThread*>(ntwThread.get())->GetMessageCounter();
+	u64 receivedTime = time(nullptr);
+	std::unique_ptr<Chat::ImageMessage> mess = std::make_unique<Chat::ImageMessage>(tex, users->GetUser(selfID), receivedTime, messID);
+	ReceiveMessage(std::move(mess));
+	Networking::Serialization::Serializer sr;
+	sr.Write(receivedTime);
+	sr.Write(selfID);
+	sr.Write(messID);
+	tex->SerializeFile(sr);
+	ntwThread->PushAction(Chat::Action::MESSAGE_IMAGE, sr.GetBuffer(), sr.GetBufferSize());
 }
 
 void Chat::ServerChatManager::Render()

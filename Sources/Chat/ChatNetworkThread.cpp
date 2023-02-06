@@ -41,6 +41,24 @@ void Chat::ChatNetworkThread::Update()
 				}
 			}
 		}
+		else if (actionQueue[i].type == Action::MESSAGE_IMAGE)
+		{
+			Networking::Serialization::Deserializer dr(actionQueue[i].data);
+			u64 userID;
+			u64 size;
+			u64 dummyTime;
+			s64 dummyID;
+			if (!dr.Read(dummyTime) || !dr.Read(userID) || !dr.Read(dummyID) || !dr.Read(size))
+			{
+				continue;
+			}
+			std::string tmp;
+			tmp.resize(size);
+			if (!dr.Read(reinterpret_cast<u8*>(tmp.data()), size)) continue;
+			Resources::Texture* tex = textures->GetTexture(tmp);
+			if (tex == textures->GetDefaultImage()) continue;
+			files.AddFileToBroadCast(tex);
+		}
 		actions.push_back(std::move(actionQueue[i]));
 	}
 	actionQueue.clear();
@@ -184,6 +202,34 @@ bool Chat::ChatClientThread::ProcessTextMessage(Networking::Serialization::Deser
 	return true;
 }
 
+bool Chat::ChatClientThread::ProcessImageMessage(Networking::Serialization::Deserializer& dr)
+{
+	u64 userID;
+	u64 messID;
+	s64 mTime;
+	std::string tmp;
+	u64 size;
+	if (!dr.Read(mTime) || !dr.Read(userID) || !dr.Read(messID))
+	{
+		return false;
+	}
+	if (!dr.Read(size)) return false;
+	tmp.resize(size);
+	if (!dr.Read(reinterpret_cast<u8*>(tmp.data()), size)) return false;
+	Resources::Texture* tex = textures->GetTexture(tmp);
+	if (tex != textures->GetDefaultImage())
+	{
+		std::unique_ptr<Chat::ImageMessage> mess = std::make_unique<Chat::ImageMessage>(tex, users->GetOrCreateUser(userID), mTime, messID);
+		manager->ReceiveMessage(std::move(mess));
+		return true;
+	}
+	tex = textures->GetOrCreateTexture(tmp);
+	if (!tex->PreLoad(dr, tmp)) return false;
+	std::unique_ptr<Chat::ImageMessage> mess = std::make_unique<Chat::ImageMessage>(tex, users->GetOrCreateUser(userID), mTime, messID);
+	manager->ReceiveMessage(std::move(mess));
+	return true;
+}
+
 bool Chat::ChatClientThread::ProcessFilePart(Networking::Serialization::Deserializer& dr)
 {
 	u64 strSize;
@@ -234,7 +280,7 @@ void Chat::ChatClientThread::Update()
 				ProcessTextMessage(dr);
 				break;
 			case Action::MESSAGE_IMAGE:
-				// TODO
+				ProcessImageMessage(dr);
 				break;
 			case Action::USER_UPDATE_NAME:
 				ProcessUserNameUpdate(dr);
@@ -453,6 +499,36 @@ bool Chat::ChatServerThread::ProcessServerTextMessage(Networking::Serialization:
 	return true;
 }
 
+bool Chat::ChatServerThread::ProcessServerImageMessage(Networking::Serialization::Deserializer& dr)
+{
+	u64 userID;
+	u64 messID = GetMessageCounter();
+	std::string tmp;
+	u64 size;
+	u64 dummyTime;
+	s64 dummyID;
+	if (!dr.Read(dummyTime) || !dr.Read(userID) || !dr.Read(dummyID))
+	{
+		return false;
+	}
+	if (!dr.Read(size)) return false;
+	tmp.resize(size);
+	if (!dr.Read(reinterpret_cast<u8*>(tmp.data()), size)) return false;
+	s64 receivedTime = time(nullptr);
+	User* user = users->GetOrCreateUser(userID);
+	if (receivedTime > user->lastActivity)
+	{
+		user->isConnected = true;
+		user->lastActivity = receivedTime;
+	}
+	Resources::Texture* tex = textures->GetOrCreateTexture(tmp);
+	if (!tex->PreLoad(dr, tmp)) return false;
+	std::unique_ptr<Chat::ImageMessage> mess = std::make_unique<Chat::ImageMessage>(tex, users->GetOrCreateUser(userID), receivedTime, messID);
+	actionQueue.push_back(std::move(mess->Serialize()));
+	manager->ReceiveMessage(std::move(mess));
+	return true;
+}
+
 bool Chat::ChatServerThread::ProcessServerUserColorUpdate(Networking::Serialization::Deserializer& dr)
 {
 	Chat::User* user;
@@ -653,7 +729,7 @@ void Chat::ChatServerThread::Update()
 				ProcessServerTextMessage(dr);
 				break;
 			case Action::MESSAGE_IMAGE:
-				// TODO
+				ProcessServerImageMessage(dr);
 				break;
 			case Action::USER_UPDATE_NAME:
 				ProcessServerUserNameUpdate(dr);

@@ -87,6 +87,7 @@ namespace Chat
 		bool ProcessUserColorUpdate(Networking::Serialization::Deserializer& dr);
 		bool ProcessUserIconUpdate(Networking::Serialization::Deserializer& dr);
 		bool ProcessTextMessage(Networking::Serialization::Deserializer& dr);
+		bool ProcessImageMessage(Networking::Serialization::Deserializer& dr);
 		bool ProcessFilePart(Networking::Serialization::Deserializer& dr);
 	};
 
@@ -107,6 +108,7 @@ namespace Chat
 		void ThreadFunc();
 	private:
 		bool ProcessServerTextMessage(Networking::Serialization::Deserializer& dr);
+		bool ProcessServerImageMessage(Networking::Serialization::Deserializer& dr);
 		bool ProcessServerUserColorUpdate(Networking::Serialization::Deserializer& dr);
 		bool ProcessServerUserNameUpdate(Networking::Serialization::Deserializer& dr);
 		bool ProcessServerUserIconUpdate(Networking::Serialization::Deserializer& dr);

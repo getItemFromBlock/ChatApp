@@ -80,32 +80,56 @@ Chat::ImageMessage::ImageMessage(Resources::Texture* img, User* userIn, s64 tm, 
 	width = tex->GetTextureWidth() * 200.0f / tex->GetTextureHeight();
 }
 
+Resources::Texture* Chat::ImageMessage::unloadedImg = nullptr;
 void Chat::ImageMessage::Draw() const
 {
 	ImVec2 pos = ImGui::GetCursorPos();
 	DrawUser(pos);
-	ImGui::Image((ImTextureID)tex->GetTextureID(), ImVec2(width, 200));
-	if (ImGui::BeginPopupContextItem(messageSTR))
+	if (tex->IsLoaded())
 	{
-		if (ImGui::Button("Save File"))
+		ImGui::Image((ImTextureID)tex->GetTextureID(), ImVec2(width, 200));
+		if (ImGui::BeginPopupContextItem(messageSTR))
 		{
-			std::string path = std::string("Saved\\") + messageSTR;
-			tex->SaveFileData(path);
-			ImGui::CloseCurrentPopup();
+			if (ImGui::Button("Save File"))
+			{
+				std::string path = std::string("Saved\\") + messageSTR;
+				tex->SaveFileData(path);
+				ImGui::CloseCurrentPopup();
+			}
+			if (ImGui::IsAnyMouseDown() && !ImGui::IsItemHovered())
+			{
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
 		}
-		if (ImGui::IsAnyMouseDown() && !ImGui::IsItemHovered())
-		{
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::EndPopup();
+	}
+	else
+	{
+		ImGui::Image((ImTextureID)unloadedImg->GetTextureID(), ImVec2(200, 200));
+		ImGui::SetCursorPos(ImVec2(pos.x, pos.y + 90));
+		ImGui::ProgressBar(tex->GetLoadingCompletion(), ImVec2(200, 20));
 	}
 	ImGui::SetCursorPosX(pos.x);
 }
 
 Chat::ActionData Chat::ImageMessage::Serialize() const
 {
-	// TODO
-	return Chat::ActionData();
+	Networking::Serialization::Serializer sr;
+	sr.Write(unixTime);
+	sr.Write(sender->userID);
+	sr.Write(messageID);
+	sr.Write(tex->GetPath().size());
+	sr.Write(reinterpret_cast<const u8*>(tex->GetPath().data()), tex->GetPath().size());
+	tex->SerializeFile(sr);
+	Chat::ActionData action;
+	action.type = Chat::Action::MESSAGE_IMAGE;
+	action.data = std::vector(sr.GetBuffer(), sr.GetBuffer() + sr.GetBufferSize());
+	return action;
+}
+
+void Chat::ImageMessage::SetDefaultImage(Resources::Texture* imgIn)
+{
+	unloadedImg = imgIn;
 }
 
 Chat::ChatMessage::ChatMessage(User* s, s64 timeIn, u64 id) : sender(s), messageID(id)

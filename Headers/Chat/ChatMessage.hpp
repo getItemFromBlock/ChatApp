@@ -61,10 +61,11 @@ namespace Chat
 		virtual ~ImageMessage() override = default;
 		virtual void Draw() const override;
 		Chat::ActionData Serialize() const override;
-
+		static void SetDefaultImage(Resources::Texture* imgIn);
 	protected:
 		Resources::Texture* tex;
 		float width = 200.0f;
+		static Resources::Texture* unloadedImg;
 	};
 
 	class ConnectionMessage : public ChatMessage

@@ -21,14 +21,15 @@ namespace Chat
 	{
 	public:
 		ChatManager() = delete;
-		ChatManager(UserManager* u, Resources::TextureManager* t, u64 s, ImGui::FileBrowser* br)
-			: users(u), textures(t), selfID(s), browser(br) {};
+		ChatManager(UserManager* u, Resources::TextureManager* t, u64 s, ImGui::FileBrowser* br);
 
 		virtual ~ChatManager() = default;
 
 		virtual bool isHost() const = 0;
 
 		virtual void SendChatMessage() = 0;
+
+		virtual void SendChatImage(Resources::Texture* tex) = 0;
 
 		virtual void Update() = 0;
 
@@ -73,13 +74,15 @@ namespace Chat
 
 		void SendChatMessage() override;
 
+		void SendChatImage(Resources::Texture* tex) override;
+
 		void Render() override;
 
 		void Update() override;
 
 	private:
 		std::string serverAddress;
-
+		bool rRandom = false;
 		void RenderConnectionScreen();
 	};
 
@@ -93,6 +96,8 @@ namespace Chat
 		bool isHost() const override { return true; }
 
 		void SendChatMessage() override;
+
+		void SendChatImage(Resources::Texture* tex) override;
 
 		void Render() override;
 

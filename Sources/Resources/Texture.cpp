@@ -115,12 +115,6 @@ TextureError Resources::Texture::TryLoad(const char* pathIn, Texture* tex, Maths
 bool Resources::Texture::PreLoad(Networking::Serialization::Deserializer& dr, const std::string& pathIn)
 {
 	if (loaded.Load()) UnLoad();
-	if (FileData)
-	{
-		delete[] FileData;
-		FileData = nullptr;
-		receivedParts.clear();
-	}
 	if (!LargeFile::PreLoad(dr, pathIn)) return false;
 	return (dr.Read(sizeX) && dr.Read(sizeY));
 }
@@ -280,6 +274,7 @@ void Texture::UnLoad()
 	{
 		glDeleteTextures(1, &textureID);
 	}
+	loaded.Store(false);
 	DeleteData();
 }
 

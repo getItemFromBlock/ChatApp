@@ -26,6 +26,7 @@ namespace Resources
 		u32 GetLastPacketSize() const;
 		const std::string& GetPath() const { return path; }
 		const std::string& GetFileType() const { return fileType; }
+		float GetLoadingCompletion() const;
 	protected:
 		u8* FileData = nullptr;
 		u64 dataSize = 0;
