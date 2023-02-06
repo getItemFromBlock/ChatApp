@@ -105,6 +105,7 @@ void ChatManager::Render()
 	if (ImGui::Begin("Send Message", nullptr, ImGuiWindowFlags_NoCollapse))
 	{
 		bool valided = ImGui::InputTextMultiline("##textInput", &currentText, ImVec2(0,0), ImGuiInputTextFlags_CtrlEnterForNewLine | ImGuiInputTextFlags_EnterReturnsTrue);
+		if (currentText.size() > 32768) currentText.resize(32768);
 		if ((ImGui::Button("Send Message") || valided) && !currentText.empty())
 		{
 			SendChatMessage();

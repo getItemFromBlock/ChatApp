@@ -119,7 +119,7 @@ int App::Init()
 
 	fileDialog = std::make_unique<ImGui::FileBrowser>();
 	fileDialog->SetTitle("Image Selection");
-	fileDialog->SetTypeFilters({ ".png", ".jpg", ".jpeg", ".webp" });
+	fileDialog->SetTypeFilters({ ".png", ".jpg", ".jpeg", ".ico" });
 
 	return 0;
 }
