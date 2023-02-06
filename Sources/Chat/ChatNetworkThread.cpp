@@ -434,7 +434,7 @@ void Chat::ChatClientThread::ThreadFunc()
 			if(sr.GetBufferSize() > 0) client.sendTo(address, sr.GetBuffer(), sr.GetBufferSize(), 0);
 			signal.Store(false);
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(30));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 	if (address.isValid())
 	{

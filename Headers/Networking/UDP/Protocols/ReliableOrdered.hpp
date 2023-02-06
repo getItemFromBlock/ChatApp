@@ -73,7 +73,7 @@ namespace Networking::UDP::Protocols
 			void onDataReceived(const u8* data, u16 datasize);
 			std::vector<std::vector<u8>> process();
 
-			static constexpr size_t QueueSize = 256 * Packet::MaxPacketsPerMessage;
+			static constexpr size_t QueueSize = 512 * Packet::MaxPacketsPerMessage; // Téma la taille de la queue
 		private:
 			void onPacketReceived(const Packet* pckt);
 

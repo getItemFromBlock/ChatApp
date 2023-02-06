@@ -221,6 +221,7 @@ namespace Networking::UDP
 				else
 				{
 					//!< Something is wrong, unexpected datagram
+					assert(0);
 				}
 			}
 			else
