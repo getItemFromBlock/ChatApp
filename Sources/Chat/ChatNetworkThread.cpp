@@ -216,15 +216,19 @@ bool Chat::ChatClientThread::ProcessImageMessage(Networking::Serialization::Dese
 	if (!dr.Read(size)) return false;
 	tmp.resize(size);
 	if (!dr.Read(reinterpret_cast<u8*>(tmp.data()), size)) return false;
+	std::cout << "Received texture: " << tmp << std::endl;
 	Resources::Texture* tex = textures->GetTexture(tmp);
 	if (tex != textures->GetDefaultImage())
 	{
+		std::cout << "Texture already exist" << std::endl;
 		std::unique_ptr<Chat::ImageMessage> mess = std::make_unique<Chat::ImageMessage>(tex, users->GetOrCreateUser(userID), mTime, messID);
 		manager->ReceiveMessage(std::move(mess));
 		return true;
 	}
 	tex = textures->GetOrCreateTexture(tmp);
+	std::cout << "Creating texture..." << std::endl;
 	if (!tex->PreLoad(dr, tmp)) return false;
+	std::cout << "Texture created" << std::endl;
 	std::unique_ptr<Chat::ImageMessage> mess = std::make_unique<Chat::ImageMessage>(tex, users->GetOrCreateUser(userID), mTime, messID);
 	manager->ReceiveMessage(std::move(mess));
 	return true;
@@ -240,8 +244,19 @@ bool Chat::ChatClientThread::ProcessFilePart(Networking::Serialization::Deserial
 	}
 	filePath.resize(strSize);
 	if (!dr.Read(reinterpret_cast<u8*>(filePath.data()), strSize)) return false;
+	std::cout << "Receiving file data for " << filePath << std::endl;
 	Resources::Texture* tex = textures->GetOrCreateTexture(filePath);
-	if (tex->IsLoaded() || !tex->AcceptPacket(dr)) return false;
+	if (tex->IsLoaded())
+	{
+		std::cout << "Texture already exists!" << std::endl;
+		return false;
+	}
+	else if (!tex->AcceptPacket(dr))
+	{
+		std::cout << "Could not accept packet!" << std::endl;
+		return false;
+	}
+	std::cout << "Data received" << std::endl;
 	return true;
 }
 

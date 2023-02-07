@@ -118,8 +118,6 @@ Chat::ActionData Chat::ImageMessage::Serialize() const
 	sr.Write(unixTime);
 	sr.Write(sender->userID);
 	sr.Write(messageID);
-	sr.Write(tex->GetPath().size());
-	sr.Write(reinterpret_cast<const u8*>(tex->GetPath().data()), tex->GetPath().size());
 	tex->SerializeFile(sr);
 	Chat::ActionData action;
 	action.type = Chat::Action::MESSAGE_IMAGE;
